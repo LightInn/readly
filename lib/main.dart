@@ -76,6 +76,7 @@ class _MyAppState extends State<MyApp> {
     if (response.statusCode == 200) {
       setState(() {
         _urlContent = response.body;
+        // log(_urlContent.toString());
         final document = html.parse(_urlContent!);
         final titleElement = document.querySelector('title');
         if (titleElement != null) {
@@ -101,32 +102,39 @@ class _MyAppState extends State<MyApp> {
         }
 
         final contentType = response.headers['content-type'];
-        if (contentType != null) {
-          final charsetMatch =
-              RegExp('charset=([\\w-]+)').firstMatch(contentType);
-          if (charsetMatch != null) {
-            final charset = charsetMatch.group(1);
-            final encoder = Encoding.getByName(charset);
-            _usefulParagraphs = document
-                .querySelectorAll('p')
-                .map((p) => p.text.trim())
-                .toList();
-          }
-        }
+
+        log("content type : $contentType");
+        final charsetMatch = RegExp('charset=([\\w-]+)')
+            .firstMatch(contentType ?? "text/html; charset=UTF-8");
+
+        log("charsetMatch type : ${charsetMatch?.group(1)}");
+        final charset = charsetMatch?.group(1) ?? "UTF-8";
+        Encoding.getByName(charset);
+
+        log(" LOG  HTML > ${document.querySelectorAll('p').map((e) => e.text.trim()).toList()}");
+
+        _usefulParagraphs = document.querySelectorAll('p').map((e) => e.text.trim()).toList();
+
+        _usefulParagraphs = document.querySelectorAll('p').map((e) => e.text.trim()).where((element) => element.length > 50).toList();
+
       });
 
       if (_usefulParagraphs != null) {
         var joined = _usefulParagraphs?.isNotEmpty == true
-            ? _usefulParagraphs!.join(" \n ")
+            ? _usefulParagraphs!.join("\n")
             : '';
+
+        if (joined.length > 2048) {
+          joined = joined.substring(0, 2048);
+        }
 
         final request = ChatCompleteText(messages: [
           Map.of({
-            "role": "user",
+            "role": "synthetiser",
             "content":
-                'Ton rôle est de synthétiser des articles de presse. Je vais te donner le contenu d\'une page web traitant d\'un sujet d\'actualité et tu dois me le résumer en quelques phrases en ne gardant que l\'essentiel, sans te répéter. Tu formatera le resultat pour le rendre agreable a lire et aerer en francais. Contenu :"${joined!}"'
+                'Your role is to synthesize press articles. I will provide you with the content of a web page discussing a current topic, and you must summarize it in a concise manner, focusing on essential information without repetition. Additionally, ensure the summary is well-structured and pleasant to read. Adapt the format of your responses in the most convenient way to convey the information, and always provide the translation in French.\nContent:"${joined!}"'
           })
-        ], maxToken: 1000, model: ChatModel.gptTurbo);
+        ],maxToken: 2048, model: ChatModel.gptTurbo);
 
         openAI.onChatCompletionSSE(request: request).listen(
             (value) => setState(() {
@@ -137,7 +145,7 @@ class _MyAppState extends State<MyApp> {
                       ? false
                       : true;
                 }),
-            onDone: () => setState(()  {
+            onDone: () => setState(() {
                   _isLoading = false;
 
                   // convert en JSON
