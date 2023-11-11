@@ -121,23 +121,23 @@ class _MyAppState extends State<MyApp> {
             : '';
 
         final request = ChatCompleteText(messages: [
-          Map.of({
-            "role": "user",
-            "content":
-                'Ton rôle est de synthétiser des articles de presse. Je vais te donner le contenu d\'une page web traitant d\'un sujet d\'actualité et tu dois me le résumer en quelques phrases en ne gardant que l\'essentiel, sans te répéter. Tu formatera le resultat pour le rendre agreable a lire et aerer en francais. Contenu :"${joined!}"'
-          })
-        ], maxToken: 1000, model: ChatModel.gptTurbo);
+          Messages(
+              role: Role.user,
+              content:
+                  'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information to create a concise and informative summary. Present the data in a clear and digestible manner, using bullet points, tables, or a condensed format, whichever best suits the context. Ensure the summary is in the original language of the article and is free of redundancies. Content to analyze: "${joined!}"')
+        ], maxToken: 2000, model: GptTurboChatModel());
 
         openAI.onChatCompletionSSE(request: request).listen(
             (value) => setState(() {
                   _synthese = _synthese.toString() +
-                      value.choices.first.message!.content;
-                  _isLoading = value.choices.first.message?.content != null &&
+                      (value.choices?.first.message!.content ?? "");
+
+                  _isLoading = value.choices?.first.message?.content != null &&
                           _synthese != ""
                       ? false
                       : true;
                 }),
-            onDone: () => setState(()  {
+            onDone: () => setState(() {
                   _isLoading = false;
 
                   // convert en JSON

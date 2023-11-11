@@ -29,12 +29,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  share_handler: ^0.0.16
-  http: ^0.13.5
-  html: ^0.15.2
-  chat_gpt_sdk: 2.1.5
-  url_launcher: ^6.0.12
-  shared_preferences: ^2.0.18
+  share_handler: 0.0.19
+  http: 0.13.6
+  html: 0.15.2
+  chat_gpt_sdk: 2.2.6
+  url_launcher: 6.1.14
+  shared_preferences: 2.0.18
 
 
   # The following adds the Cupertino Icons font to your application.
