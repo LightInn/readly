@@ -1,3 +1,5 @@
+// pubspec.yaml
+
 name: rid
 description: Simplify web pages
 
