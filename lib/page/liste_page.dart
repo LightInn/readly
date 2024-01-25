@@ -20,21 +20,14 @@ class ListePage extends StatefulWidget {
 class _ListePageState extends State<ListePage> {
   late SharedPreferences _prefs;
 
-  TextEditingController _apiKeyController = TextEditingController();
-
   bool _isLoading = false;
+
   late Map<String, dynamic> newsDictionary;
 
   @override
   void initState() {
     super.initState();
     _checkNewsDictionary();
-  }
-
-  @override
-  void dispose() {
-    _apiKeyController.dispose();
-    super.dispose();
   }
 
   Future<void> _checkNewsDictionary() async {
@@ -44,10 +37,9 @@ class _ListePageState extends State<ListePage> {
     final newsDictionary = _prefs.getString('newsDictionary') ?? '{}';
 
     this.newsDictionary = jsonDecode(newsDictionary);
-    log(this.newsDictionary.keys.toString());
-    log(this.newsDictionary.length.toString());
+
     setState(() {
-      this._isLoading = false;
+      _isLoading = false;
     });
   }
 
@@ -55,7 +47,7 @@ class _ListePageState extends State<ListePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historique'),
+        title: const Text('History'),
       ),
       body: _isLoading
           ? const Center(
@@ -67,21 +59,18 @@ class _ListePageState extends State<ListePage> {
               // liste des news dans le dictionnaire
 
               child: ListView.builder(
-                  itemCount: this.newsDictionary.length,
+                  itemCount: newsDictionary.length,
                   itemBuilder: (context, index) {
-                    String key = this.newsDictionary.keys.elementAt(index);
+                    String key = newsDictionary.keys.elementAt(index);
                     return Card(
                       child: ListTile(
                         onTap: () {
-                          // open in main page the url
-                          log("tapped");
-
                           // final url = this.newsDictionary[key]['url'];
                           Synthese gen = Synthese(
-                            url: this.newsDictionary[key]['url'],
-                            title: this.newsDictionary[key]['title'],
-                            synthese: this.newsDictionary[key]['synthese'],
-                            listImages: this.newsDictionary[key]['listImages'],
+                            url: newsDictionary[key]['url'],
+                            title: newsDictionary[key]['title'],
+                            synthese: newsDictionary[key]['synthese'],
+                            listImages: newsDictionary[key]['listImages'],
                           );
 
                           Navigator.push(
@@ -90,18 +79,17 @@ class _ListePageState extends State<ListePage> {
                                   builder: (context) => ViewPage(
                                         synthese: gen,
                                       )));
-                          log("ca a push ?");
                         },
-                        title: Text(this.newsDictionary[key]['title'] ?? "??"),
-                        subtitle:
-                            Text(this.newsDictionary[key]['date'] ?? "??"),
+                        title: Text(newsDictionary[key]['title'] ?? "??"),
+                        subtitle: Text(newsDictionary[key]['date'] ?? "??"),
+                        splashColor: Colors.white38,
                         trailing: IconButton(
                           icon: const Icon(Icons.delete),
                           onPressed: () async {
                             setState(() {
-                              this.newsDictionary.remove(key);
-                              _prefs.setString('newsDictionary',
-                                  jsonEncode(this.newsDictionary));
+                              newsDictionary.remove(key);
+                              _prefs.setString(
+                                  'newsDictionary', jsonEncode(newsDictionary));
                             });
                           },
                         ),
