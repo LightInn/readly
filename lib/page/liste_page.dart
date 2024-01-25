@@ -70,9 +70,10 @@ class _ListePageState extends State<ListePage> {
                             url: newsDictionary[key]['url'],
                             title: newsDictionary[key]['title'],
                             synthese: newsDictionary[key]['synthese'],
-                            listImages: newsDictionary[key]['listImages'],
+                            listImages: [],
+                            // TODO get list images
+                            // listImages: newsDictionary[key]['images'],
                           );
-
                           Navigator.push(
                               context,
                               MaterialPageRoute(

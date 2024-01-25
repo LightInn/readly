@@ -1,10 +1,12 @@
 import 'package:animated_image_list/AnimatedImageList.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:markdown_widget/markdown_widget.dart';
 import 'package:rid/model/article_controller.dart';
 import 'package:rid/page/images_page.dart';
 import 'package:rid/page/liste_page.dart';
 import 'package:rid/page/settings_page.dart';
+import 'package:flutter_highlight/themes/a11y-light.dart';
 
 Scaffold ArticleView(BuildContext context, ArticleController controller) {
   return Scaffold(
@@ -53,6 +55,14 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
                                   ),
                                 ),
                                 const SizedBox(height: 30),
+
+                                // TODO : Interpreter le markdown
+
+                                // MarkdownWidget(
+                                //     data: controller.synthese!,
+                                //     config: MarkdownConfig(configs: [
+                                //       PreConfig(theme: a11yLightTheme),
+                                //     ])),
                                 Text(
                                   controller.synthese!,
                                   style: const TextStyle(
