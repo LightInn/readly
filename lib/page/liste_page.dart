@@ -3,8 +3,12 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:rid/main.dart';
+import 'package:rid/model/synthese.dart';
+import 'package:rid/page/view_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class ListePage extends StatefulWidget {
   const ListePage({Key? key}) : super(key: key);
@@ -42,9 +46,10 @@ class _ListePageState extends State<ListePage> {
     this.newsDictionary = jsonDecode(newsDictionary);
     log(this.newsDictionary.keys.toString());
     log(this.newsDictionary.length.toString());
-    this._isLoading = false;
+    setState(() {
+      this._isLoading = false;
+    });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -67,23 +72,37 @@ class _ListePageState extends State<ListePage> {
                     String key = this.newsDictionary.keys.elementAt(index);
                     return Card(
                       child: ListTile(
-                        onTap: () async {
+                        onTap: () {
                           // open in main page the url
+                          log("tapped");
 
-                          final url = this.newsDictionary[key]['url'];
+                          // final url = this.newsDictionary[key]['url'];
+                          Synthese gen = Synthese(
+                            url: this.newsDictionary[key]['url'],
+                            title: this.newsDictionary[key]['title'],
+                            synthese: this.newsDictionary[key]['synthese'],
+                            listImages: this.newsDictionary[key]['listImages'],
+                          );
 
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ViewPage(
+                                        synthese: gen,
+                                      )));
+                          log("ca a push ?");
                         },
                         title: Text(this.newsDictionary[key]['title'] ?? "??"),
                         subtitle:
                             Text(this.newsDictionary[key]['date'] ?? "??"),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete),
-                          onPressed: () {
-
+                          onPressed: () async {
+                            setState(() {
                               this.newsDictionary.remove(key);
                               _prefs.setString('newsDictionary',
                                   jsonEncode(this.newsDictionary));
-
+                            });
                           },
                         ),
                       ),

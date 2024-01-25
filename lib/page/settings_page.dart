@@ -98,8 +98,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   const SizedBox(height: 10.0),
                   GestureDetector(
-                    onTap: () => launchUrl(
-                        Uri.parse("https://platform.openai.com/account/api-keys")),
+                    onTap: () => launchUrl(Uri.parse(
+                        "https://platform.openai.com/account/api-keys")),
                     child: const Text(
                       'https://platform.openai.com/account/api-keys',
                       style: TextStyle(
