@@ -18,8 +18,6 @@ class ViewPage extends StatefulWidget {
 class _ViewPageState extends State<ViewPage> {
   Synthese get synthese => widget.synthese;
 
-  late SharedPreferences _prefs;
-
   TextEditingController _apiKeyController = TextEditingController();
 
   bool _isLoading = false;
@@ -34,22 +32,6 @@ class _ViewPageState extends State<ViewPage> {
   void dispose() {
     _apiKeyController.dispose();
     super.dispose();
-  }
-
-  Future<void> _saveApiKey(String apiKey) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    await _prefs.setString('apiKey', apiKey);
-    final prefs = await _prefs;
-    await prefs.setBool('hasApiKey', true);
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    Navigator.of(context).pushReplacementNamed("/");
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,8 +11,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late SharedPreferences _prefs;
-
   TextEditingController _apiKeyController = TextEditingController();
 
   bool _isLoading = false;
@@ -29,9 +28,10 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _checkApiKey() async {
-    _prefs = await SharedPreferences.getInstance();
+    final storage = new FlutterSecureStorage();
 
-    final apiKey = await _prefs.getString('apiKey');
+    // Read value
+    final apiKey = await storage.read(key: "apiKey");
 
     if (apiKey != null && apiKey.isNotEmpty) {
       Navigator.of(context).pop();
@@ -43,9 +43,10 @@ class _SettingsPageState extends State<SettingsPage> {
       _isLoading = true;
     });
 
-    await _prefs.setString('apiKey', apiKey);
-    final prefs = await _prefs;
-    await prefs.setBool('hasApiKey', true);
+    final storage = new FlutterSecureStorage();
+
+    // Write value
+    await storage.write(key: "apiKey", value: apiKey);
 
     setState(() {
       _isLoading = false;

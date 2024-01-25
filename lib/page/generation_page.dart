@@ -42,8 +42,12 @@ class _GenerationPageState extends State<GenerationPage> {
   }
 
   Future<void> initGenerator() async {
+    final storage = FlutterSecureStorage();
+    final apiKey = await storage.read(key: "apiKey");
+
     _prefs = await SharedPreferences.getInstance();
-    final apiKey = _prefs.getString('apiKey');
+    // final apiKey = _prefs.getString('apiKey');
+
     if (apiKey == null) {
       Navigator.push(context,
           MaterialPageRoute(builder: (context) => const SettingsPage()));
