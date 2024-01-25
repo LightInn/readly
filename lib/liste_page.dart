@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:rid/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,7 +19,7 @@ class _ListePageState extends State<ListePage> {
   TextEditingController _apiKeyController = TextEditingController();
 
   bool _isLoading = false;
-  var newsDictionary;
+  late Map<String, dynamic> newsDictionary;
 
   @override
   void initState() {
@@ -35,27 +37,14 @@ class _ListePageState extends State<ListePage> {
     _isLoading = true;
     _prefs = await SharedPreferences.getInstance();
 
-    final newsDictionary = _prefs.getString('newsDictionary') ?? '[]';
+    final newsDictionary = _prefs.getString('newsDictionary') ?? '{}';
 
     this.newsDictionary = jsonDecode(newsDictionary);
+    log(this.newsDictionary.keys.toString());
+    log(this.newsDictionary.length.toString());
     this._isLoading = false;
   }
 
-  Future<void> _saveApiKey(String apiKey) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    await _prefs.setString('apiKey', apiKey);
-    final prefs = await _prefs;
-    await prefs.setBool('hasApiKey', true);
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    Navigator.of(context).pushReplacementNamed("/");
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,13 +64,27 @@ class _ListePageState extends State<ListePage> {
               child: ListView.builder(
                   itemCount: this.newsDictionary.length,
                   itemBuilder: (context, index) {
+                    String key = this.newsDictionary.keys.elementAt(index);
                     return Card(
                       child: ListTile(
-                        title: Text('Titre de la news $index'),
-                        subtitle: Text('Description du produit $index'),
+                        onTap: () async {
+                          // open in main page the url
+
+                          final url = this.newsDictionary[key]['url'];
+
+                        },
+                        title: Text(this.newsDictionary[key]['title'] ?? "??"),
+                        subtitle:
+                            Text(this.newsDictionary[key]['date'] ?? "??"),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete),
-                          onPressed: () {},
+                          onPressed: () {
+
+                              this.newsDictionary.remove(key);
+                              _prefs.setString('newsDictionary',
+                                  jsonEncode(this.newsDictionary));
+
+                          },
                         ),
                       ),
                     );

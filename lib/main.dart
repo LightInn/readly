@@ -22,6 +22,7 @@ class MyApp extends StatefulWidget {
 
   @override
   State<MyApp> createState() => _MyAppState();
+
 }
 
 class _MyAppState extends State<MyApp> {
@@ -42,7 +43,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> initApiKey() async {
-    final _prefs = await SharedPreferences.getInstance();
+    _prefs = await SharedPreferences.getInstance();
     final apiKey = _prefs.getString('apiKey');
     if (apiKey == null) {
       navigatorKey.currentState?.pushReplacementNamed('/settings');
@@ -124,7 +125,7 @@ class _MyAppState extends State<MyApp> {
           Messages(
               role: Role.user,
               content:
-                  'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information from the global website (all the information may not be related to the current article) to create a concise and informative summary. Present the data in a clear and digestible manner, using bullet points, tables, or a condensed format like TL/DR, according to the best way to tell the information. Ensure the summary is in the original language of the article and is free of redundancies. Content to analyze: "${joined!}"')
+                  'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information from the global website (all the information may not be related to the current article) to create a concise and informative summary. Present the data in a clear and digestible manner, using bullet points or tables or a condensed format like TL/DR, according to the best way to tell the information. Ensure the answer is in the same language as the content I give you and is free of redundancies. Content to analyze: "${joined!}"')
         ], maxToken: 2000, model: GptTurboChatModel());
 
         final res =
@@ -150,13 +151,16 @@ class _MyAppState extends State<MyApp> {
               "url": shared!.content!,
               "title": _pageTitle.toString(),
               "images": _listImages,
-              "synthese": _synthese.toString()
+              "synthese": _synthese.toString(),
+              "date": "${DateTime.now()}"
             };
 
             final newsDictionary =
                 jsonDecode(_prefs.getString("newsDictionary") ?? "{}");
 
             newsDictionary[shared!.content!] = page_dictionary;
+
+            log("newsDictionary: ${newsDictionary.toString()}");
 
             _prefs.setString("newsDictionary", jsonEncode(newsDictionary));
           } else {
