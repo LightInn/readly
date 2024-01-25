@@ -124,41 +124,46 @@ class _MyAppState extends State<MyApp> {
           Messages(
               role: Role.user,
               content:
-                  'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information to create a concise and informative summary. Present the data in a clear and digestible manner, using bullet points, tables, or a condensed format, whichever best suits the context. Ensure the summary is in the original language of the article and is free of redundancies. Content to analyze: "${joined!}"')
+                  'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information from the global website (all the information may not be related to the current article) to create a concise and informative summary. Present the data in a clear and digestible manner, using bullet points, tables, or a condensed format like TL/DR, according to the best way to tell the information. Ensure the summary is in the original language of the article and is free of redundancies. Content to analyze: "${joined!}"')
         ], maxToken: 2000, model: GptTurboChatModel());
 
-        final res = await openAI.onChatCompletion(request: request);
+        final res =
+            await openAI.onChatCompletionSSE(request: request).listen((it) {
+          debugPrint(it.choices?.last.message?.content);
 
-        if (res != null) {
-          setState(() {
-            _synthese = _synthese.toString() +
-                (res.choices?.first.message!.content ?? "");
+          if (it.choices != null) {
+            setState(() {
+              log("res.choices?.first.message!.content: ${it.choices?.last.message?.content}");
 
-            _isLoading =
-                res.choices?.first.message?.content != null && _synthese != ""
-                    ? false
-                    : true;
-          });
+              _synthese = _synthese.toString() +
+                  (it.choices?.last.message?.content ?? "");
 
-          // convert en JSON
+              _isLoading =
+                  it.choices?.last.message?.content != null && _synthese != ""
+                      ? false
+                      : true;
+            });
 
-          final page_dictionary = {
-            "url": shared!.content!,
-            "title": _pageTitle.toString(),
-            "images": _listImages,
-            "synthese": _synthese.toString()
-          };
+            // convert en JSON
 
-          final newsDictionary =
-              jsonDecode(_prefs.getString("newsDictionary") ?? "{}");
+            final page_dictionary = {
+              "url": shared!.content!,
+              "title": _pageTitle.toString(),
+              "images": _listImages,
+              "synthese": _synthese.toString()
+            };
 
-          newsDictionary[shared!.content!] = page_dictionary;
+            final newsDictionary =
+                jsonDecode(_prefs.getString("newsDictionary") ?? "{}");
 
-          _prefs.setString("newsDictionary", jsonEncode(newsDictionary));
-        }
-      } else {
-        setState(() {
-          _isLoading = false;
+            newsDictionary[shared!.content!] = page_dictionary;
+
+            _prefs.setString("newsDictionary", jsonEncode(newsDictionary));
+          } else {
+            setState(() {
+              _isLoading = false;
+            });
+          }
         });
       }
     }
