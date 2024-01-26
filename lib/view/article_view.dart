@@ -82,20 +82,23 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.large(
-        onPressed: () {
-          // Add your onPressed code here!
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => ImagesPage(
-                        listImages: controller.listImages,
-                      )));
-        },
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        splashColor: Colors.black45,
-        child: const Icon(Icons.photo_album_outlined),
-      ),
+      floatingActionButton:
+          controller.listImages == null || controller.listImages!.isEmpty
+              ? const SizedBox(height: 0)
+              : FloatingActionButton.large(
+                  onPressed: () {
+                    // Add your onPressed code here!
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => ImagesPage(
+                                  listImages: controller.listImages,
+                                )));
+                  },
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  splashColor: Colors.black45,
+                  child: const Icon(Icons.photo_album_outlined),
+                ),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat);
 }
