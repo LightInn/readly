@@ -1,23 +1,23 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
+
 import 'package:chat_gpt_sdk/chat_gpt_sdk.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:html/parser.dart' as html;
+import 'package:http/http.dart' as http;
 import 'package:rid/model/article_controller.dart';
-import 'package:rid/model/synthese.dart';
-import 'package:rid/page/liste_page.dart';
 import 'package:rid/page/settings_page.dart';
 import 'package:rid/view/article_view.dart';
-import 'dart:async';
 import 'package:share_handler_platform_interface/share_handler_platform_interface.dart';
-import 'package:http/http.dart' as http;
-import 'package:html/parser.dart' as html;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class GenerationPage extends StatefulWidget {
-  final Synthese? synthese;
+  final SharedMedia sharedmedia;
 
-  const GenerationPage({Key? key, this.synthese}) : super(key: key);
+  const GenerationPage( {Key? key, required this.sharedmedia})
+      : super(key: key);
 
   @override
   State<GenerationPage> createState() => _GenerationPageState();
@@ -59,29 +59,32 @@ class _GenerationPageState extends State<GenerationPage> {
               connectTimeout: const Duration(seconds: 60)),
           enableLog: true);
 
-      await initHookListener(apiKey);
+      shared = widget.sharedmedia;
+      synthetizeArticle();
+
+      // await initHookListener(apiKey);
     }
   }
 
-  Future<void> initHookListener(String apiKey) async {
-    final handler = await ShareHandlerPlatform.instance;
-    handler.sharedMediaStream.listen(_handleHookChange);
-    shared = await handler.getInitialSharedMedia();
-    if (shared?.content?.startsWith('http') == true) {
-      synthetizeArticle();
-    }
-  }
-
-  // Only if a new url is shared
-  void _handleHookChange(SharedMedia? media) async {
-    setState(() {
-      _isLoading = true;
-      shared = media;
-    });
-    if (shared?.content?.startsWith('http') == true) {
-      synthetizeArticle();
-    }
-  }
+  // Future<void> initHookListener(String apiKey) async {
+  //   final handler = await ShareHandlerPlatform.instance;
+  //   handler.sharedMediaStream.listen(_handleHookChange);
+  //   shared = await handler.getInitialSharedMedia();
+  //   if (shared?.content?.startsWith('http') == true) {
+  //     synthetizeArticle();
+  //   }
+  // }
+  //
+  // // Only if a new url is shared
+  // void _handleHookChange(SharedMedia? media) async {
+  //   setState(() {
+  //     _isLoading = true;
+  //     shared = media;
+  //   });
+  //   if (shared?.content?.startsWith('http') == true) {
+  //     synthetizeArticle();
+  //   }
+  // }
 
   Future<void> synthetizeArticle() async {
     setState(() {

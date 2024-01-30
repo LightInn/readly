@@ -1,20 +1,16 @@
 import 'dart:developer';
-import 'dart:io';
-import 'package:chat_gpt_sdk/chat_gpt_sdk.dart';
+
 import 'package:flutter/material.dart';
 import 'package:rid/page/generation_page.dart';
-import 'package:rid/page/liste_page.dart';
 import 'package:rid/page/settings_page.dart';
-import 'dart:async';
-import 'package:share_handler_platform_interface/share_handler_platform_interface.dart';
-import 'package:http/http.dart' as http;
-import 'package:html/parser.dart' as html;
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:rid/page/welcome_page.dart';
+import 'package:rid/services/hook_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(MaterialApp(
-    home: const GenerationPage(),
+    // home: const GenerationPage(), // Back to the roots
+    home: const WelcomePage(), // How to page
     theme: ThemeData(
       brightness: Brightness.dark,
       primaryColor: Colors.lightBlue[800],
