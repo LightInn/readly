@@ -21,27 +21,12 @@ class _WelcomePageState extends State<WelcomePage> {
     pageRedirect();
   }
 
-  SharedMedia sharedmedia = SharedMedia(content: null);
-
   void pageRedirect() async {
-    SharedMedia shared = await HookService.getInitialSharedMedia(context);
-
-    setState(() {
-      sharedmedia = shared;
-    });
+    await HookService.getInitialSharedMedia(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (sharedmedia.content != null) {
-      Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => GenerationPage(
-                    sharedmedia: sharedmedia,
-                  )));
-    }
-
     return Scaffold(
         appBar: AppBar(
           title: const Text("Rid"),

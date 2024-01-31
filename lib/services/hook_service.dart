@@ -17,21 +17,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class HookService {
   static getInitialSharedMedia(BuildContext context) async {
-    final handler = await ShareHandlerPlatform.instance;
+    final handler = ShareHandlerPlatform.instance;
 
     handler.sharedMediaStream
         .listen((media) => _handleHookChange(media, context));
 
-    var shared = await handler.getInitialSharedMedia();
+    SharedMedia? shared = await handler.getInitialSharedMedia();
     log("Awaited shared : ");
-    if (shared?.content?.startsWith('http') == true) {
-      log("is http");
-      log("content :${shared?.content ?? "NULL"}");
-      return shared;
+    if (shared != null && shared.content?.startsWith('http') == true) {
+      if (!context.mounted) return;
+      redirect(context, shared);
     }
-
-    log("return null");
-    return null;
   }
 
   // Only if a new url is shared
@@ -39,17 +35,22 @@ class HookService {
     log("Hook change !!! ");
 
     if (media.content?.startsWith('http') == true) {
-      Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => GenerationPage(
-                    sharedmedia: media,
-                  )));
-
-      // TODO : check if the url is an article
-      // TODO : check if the url is already in the list
-      // TODO : add the url to the list
-      // TODO : redirect to the generation page
+      if (!context.mounted) return;
+      redirect(context, media);
     }
+  }
+
+  static void redirect(BuildContext context, SharedMedia media)  {
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => GenerationPage(
+                  sharedmedia: media,
+                )));
+
+    // TODO : check if the url is an article
+    // TODO : check if the url is already in the list
+    // TODO : add the url to the list
+    // TODO : redirect to the generation page
   }
 }
