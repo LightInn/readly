@@ -5,10 +5,12 @@ import 'dart:developer';
 import 'package:chat_gpt_sdk/chat_gpt_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html;
 import 'package:http/http.dart' as http;
 import 'package:rid/model/article_controller.dart';
 import 'package:rid/page/settings_page.dart';
+import 'package:rid/services/fetch_service.dart';
 import 'package:rid/view/article_view.dart';
 import 'package:share_handler_platform_interface/share_handler_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,8 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class GenerationPage extends StatefulWidget {
   final SharedMedia sharedmedia;
 
-  const GenerationPage( {Key? key, required this.sharedmedia})
-      : super(key: key);
+  const GenerationPage({Key? key, required this.sharedmedia}) : super(key: key);
 
   @override
   State<GenerationPage> createState() => _GenerationPageState();
@@ -28,12 +29,12 @@ class _GenerationPageState extends State<GenerationPage> {
   late SharedPreferences _prefs;
 
   SharedMedia? shared;
-  String? _urlContent;
-  String? _pageTitle;
-  List<String>? _usefulParagraphs;
+  String? domContent;
+  String? title;
+  String? textContent;
   String? _synthese;
   bool _isLoading = false;
-  List<String>? _listImages;
+  final List<String> _listImages = [];
 
   @override
   void initState() {
@@ -61,30 +62,8 @@ class _GenerationPageState extends State<GenerationPage> {
 
       shared = widget.sharedmedia;
       synthetizeArticle();
-
-      // await initHookListener(apiKey);
     }
   }
-
-  // Future<void> initHookListener(String apiKey) async {
-  //   final handler = await ShareHandlerPlatform.instance;
-  //   handler.sharedMediaStream.listen(_handleHookChange);
-  //   shared = await handler.getInitialSharedMedia();
-  //   if (shared?.content?.startsWith('http') == true) {
-  //     synthetizeArticle();
-  //   }
-  // }
-  //
-  // // Only if a new url is shared
-  // void _handleHookChange(SharedMedia? media) async {
-  //   setState(() {
-  //     _isLoading = true;
-  //     shared = media;
-  //   });
-  //   if (shared?.content?.startsWith('http') == true) {
-  //     synthetizeArticle();
-  //   }
-  // }
 
   Future<void> synthetizeArticle() async {
     setState(() {
@@ -94,61 +73,30 @@ class _GenerationPageState extends State<GenerationPage> {
 
     // Fetch the content from the URL
     final response = await http.get(
-      Uri.parse(shared!.content!),
-      headers: {'Content-Type': 'text/html;'},
+      Uri.parse("https://rid-proxy.lightin.io/?u=${shared!.content}"),
+      headers: {'Content-Type': 'application/json;'},
     );
     if (response.statusCode == 200) {
       setState(() {
-        _urlContent = response.body;
-        final document = html.parse(_urlContent!);
-        final titleElement = document.querySelector('title');
-        if (titleElement != null) {
-          _pageTitle = titleElement.text;
-        }
+        final parsedResponse = jsonDecode(response.body);
 
-        // Récupérer tous les éléments <img>
-        final imgElements = document.querySelectorAll('img');
-        _listImages = [];
-        // Extraire l'URL de chaque image et les ajouter à la liste
-        for (final img in imgElements) {
-          log("img: ${img.attributes['src']}");
-          final src = img.attributes['src'];
+        textContent = parsedResponse["textContent"];
+        domContent = parsedResponse["content"];
+        title = parsedResponse["title"];
 
-          if (src != null) {
-            Uri? uri = Uri.tryParse(src);
-            if (uri != null &&
-                uri.isAbsolute &&
-                (uri.scheme == 'http' || uri.scheme == 'https')) {
-              _listImages?.add(src);
-            }
-          }
-        }
+        // Parse the HTML content
+        final Document document = html.parse(domContent);
 
-        final contentType = response.headers['content-type'];
-        if (contentType != null) {
-          final charsetMatch =
-              RegExp('charset=([\\w-]+)').firstMatch(contentType);
-          if (charsetMatch != null) {
-            final charset = charsetMatch.group(1);
-            final encoder = Encoding.getByName(charset);
-            _usefulParagraphs = document
-                .querySelectorAll('p')
-                .map((p) => p.text.trim())
-                .toList();
-          }
-        }
+        // Get the images
+        _listImages.addAll(FetchService.getImageList(document));
       });
 
-      if (_usefulParagraphs != null) {
-        var joined = _usefulParagraphs?.isNotEmpty == true
-            ? _usefulParagraphs!.join(" \n ")
-            : '';
-
+      if (textContent != null) {
         final request = ChatCompleteText(messages: [
           Messages(
               role: Role.user,
               content:
-                  'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information from the global website (all the information may not be related to the current article) to create a concise and informative summary. Present the data in a clear and digestible manner, using tables or a condensed format like TL/DR or bullet point, according to the best way to tell important part of the information. Ensure the answer is in the same language as the content I give you and is free of redundancies. Content to analyze: "${joined!}"')
+                  'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information from the global website (all the information may not be related to the current article) to create a concise and informative summary. Present the data in a clear and digestible manner, using tables or a condensed format like TL/DR or bullet point, according to the best way to tell important part of the information. Ensure the answer is free of redundancies. The answer must be in ${"french"} Content to analyze: "${textContent!}"')
         ], maxToken: 2000, model: GptTurboChatModel());
 
         final res =
@@ -172,7 +120,7 @@ class _GenerationPageState extends State<GenerationPage> {
 
             final page_dictionary = {
               "url": shared!.content!,
-              "title": _pageTitle.toString(),
+              "title": title.toString(),
               "images": _listImages,
               "synthese": _synthese.toString(),
               "date": "${DateTime.now()}"
@@ -194,17 +142,12 @@ class _GenerationPageState extends State<GenerationPage> {
         });
       }
     }
-
-    if (!mounted) return;
-    setState(() {
-      // _platformVersion = platformVersion;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     var controller =
-        ArticleController(_isLoading, _synthese, _pageTitle, _listImages);
+        ArticleController(_isLoading, _synthese, title, _listImages);
 
     return ArticleView(context, controller);
   }

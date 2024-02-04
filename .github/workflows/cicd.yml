@@ -1,5 +1,5 @@
 name: build
-on: [pull_request]
+on: [ pull_request ]
 jobs:
   build-android:
     runs-on: ubuntu-latest
@@ -20,4 +20,8 @@ jobs:
           dart format
           flutter build appbundle --debug
           
-          
+    
+
+  
+    
+      
