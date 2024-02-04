@@ -1,9 +1,6 @@
 import 'dart:developer';
 
-import 'package:flutter/material.dart';
 import 'package:html/dom.dart';
-import 'package:rid/page/generation_page.dart';
-import 'package:share_handler_platform_interface/share_handler_platform_interface.dart';
 
 class FetchService {
   static getImageList(Document document) {

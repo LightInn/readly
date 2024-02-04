@@ -1,10 +1,6 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
-import 'package:rid/page/generation_page.dart';
 import 'package:rid/page/settings_page.dart';
 import 'package:rid/services/hook_service.dart';
-import 'package:share_handler/share_handler.dart';
 
 // The WelcomePage is the first page of the app. it have the "how to" information and have a button to go to the settings page
 class WelcomePage extends StatefulWidget {

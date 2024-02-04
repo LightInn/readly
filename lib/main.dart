@@ -1,10 +1,5 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
-import 'package:rid/page/generation_page.dart';
-import 'package:rid/page/settings_page.dart';
 import 'package:rid/page/welcome_page.dart';
-import 'package:rid/services/hook_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
