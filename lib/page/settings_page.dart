@@ -10,48 +10,59 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  TextEditingController _apiKeyController = TextEditingController();
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    _languageController.dispose();
+    super.dispose();
+  }
 
+  final TextEditingController _apiKeyController = TextEditingController();
+  final TextEditingController _languageController = TextEditingController();
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _checkApiKey();
+    getSettings();
   }
 
-  @override
-  void dispose() {
-    _apiKeyController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _checkApiKey() async {
-    final storage = new FlutterSecureStorage();
-
-    // Read value
+  Future<void> getSettings() async {
     final apiKey = await storage.read(key: "apiKey");
-
-    if (apiKey != null && apiKey.isNotEmpty) {
-      Navigator.of(context).pop();
+    if (apiKey != null) {
+      _apiKeyController.text = apiKey;
+    }
+    final language = await storage.read(key: "language");
+    if (language != null) {
+      _languageController.text = language;
     }
   }
 
-  Future<void> _saveApiKey(String apiKey) async {
+  Future<void> saveSettings() async {
     setState(() {
       _isLoading = true;
     });
 
-    final storage = new FlutterSecureStorage();
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isNotEmpty) {
+      // Write value
+      await storage.write(key: "apiKey", value: apiKey);
+    }
 
-    // Write value
-    await storage.write(key: "apiKey", value: apiKey);
+    final language = _languageController.text.trim();
+    if (language.isNotEmpty) {
+      // Write value
+      await storage.write(key: "language", value: language);
+    }
 
     setState(() {
       _isLoading = false;
     });
-
-    Navigator.of(context).pushReplacementNamed("/");
+    if (apiKey.isNotEmpty) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -82,12 +93,22 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 20.0),
+                  const Text(
+                    'Enter your language (ex : french)',
+                    style: TextStyle(fontSize: 18.0),
+                  ),
+                  const SizedBox(height: 10.0),
+                  TextField(
+                    controller: _languageController,
+                    decoration: const InputDecoration(
+                      hintText: 'language',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 20.0),
                   ElevatedButton(
                     onPressed: () async {
-                      final apiKey = _apiKeyController.text.trim();
-                      if (apiKey.isNotEmpty) {
-                        await _saveApiKey(apiKey);
-                      }
+                      await saveSettings();
                     },
                     child: const Text('Save'),
                   ),
