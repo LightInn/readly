@@ -1,12 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="al.brev.rid">
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <application
         android:label="Rid"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+    >
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -31,9 +32,9 @@
 
             <intent-filter>
                 <!--  OPEN APP FROM SHARE -->
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/*" />
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/*"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
