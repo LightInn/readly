@@ -54,7 +54,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   const SizedBox(height: 30),
                   const Text(
-                    "Rid est une application qui permet de générer des résumés de texte à partir d'un article de presse.",
+                    "Rid is an application that generates text summaries from press articles.",
                     style: TextStyle(
                       fontSize: 18.0,
                       fontFamily: 'Montserrat',
@@ -63,7 +63,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   const SizedBox(height: 30),
                   const Text(
-                    "Pour cela, il suffit de partager l'url d'un article vers l'application",
+                    "All you have to do is share the url of an article with the application",
                     style: TextStyle(
                       fontSize: 18.0,
                       fontFamily: 'Montserrat',
@@ -83,7 +83,7 @@ class _WelcomePageState extends State<WelcomePage> {
                       )),
                   const SizedBox(height: 30),
                   const Text(
-                    "Pour commencer, vous devez renseigner votre clé d'api OpenIA. \n cliquez sur le bouton ci-dessous pour accéder aux paramètres.",
+                    "To get started, you'll need to enter your OpenIA api key.\n Click on the button below to access the settings.",
                     style: TextStyle(
                       fontSize: 18.0,
                       fontFamily: 'Montserrat',
@@ -98,7 +98,7 @@ class _WelcomePageState extends State<WelcomePage> {
                           MaterialPageRoute(
                               builder: (context) => const SettingsPage()));
                     },
-                    child: const Text("Paramètres"),
+                    child: const Text("Settings"),
                   )
                 ]))
           ]))
