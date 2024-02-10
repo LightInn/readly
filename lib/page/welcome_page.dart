@@ -45,7 +45,7 @@ class _WelcomePageState extends State<WelcomePage> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(children: [
                   const Text(
-                    "Bienvenue sur Rid !",
+                    "Welcome on Rid !",
                     style: TextStyle(
                       fontSize: 26.0,
                       fontFamily: 'Montserrat',

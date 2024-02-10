@@ -35,23 +35,152 @@ class _GenerationPageState extends State<GenerationPage> {
   String? textContent;
   String? _synthese;
   bool _isLoading = false;
+  bool _isSynthetized = false;
   final List<String> _listImages = [];
 
   @override
   void initState() {
     super.initState();
-    initGenerator();
+    shared = widget.sharedmedia;
+    parseArticle();
+  }
+
+  // parse Arcticle
+  Future<void> parseArticle() async {
+    setState(() {
+      _isLoading = true;
+      _synthese = "";
+    });
+
+    // Fetch the content from the URL
+    final response = await http.get(
+      Uri.parse("https://rid-proxy.lightin.io/?u=${shared!.content}"),
+      headers: {'Content-Type': 'application/json;'},
+    );
+    if (response.statusCode == 200) {
+      setState(() {
+        final parsedResponse = jsonDecode(response.body);
+
+        textContent = parsedResponse["textContent"];
+        domContent = parsedResponse["content"];
+        title = parsedResponse["title"];
+
+        _synthese = textContent ?? "";
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var controller =
+        ArticleController(_isLoading, _synthese, title, _listImages);
+
+    return Scaffold(
+        appBar: AppBar(
+          leading: IconButton.outlined(
+              onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => const ListePage()));
+              },
+              icon: const Icon(Icons.account_tree_outlined)),
+          actions: [
+            IconButton(
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const SettingsPage()));
+                },
+                icon: const Icon(Icons.settings)),
+          ],
+          title: Text(data)
+          
+          Text(controller.pageTitle.toString() == "null"
+              ? "Rid"
+              : controller.pageTitle.toString()),
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                children: <Widget>[
+                  const SizedBox(height: 10),
+                  controller.isLoading
+                      ? const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                      : controller.synthese != null && controller.synthese != ""
+                      ? Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          controller.pageTitle.toString(),
+                          style: const TextStyle(
+                            fontSize: 26.0,
+                            fontFamily: 'Montserrat',
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+
+                        // TODO : Interpreter le markdown
+
+                        // MarkdownWidget(
+                        //     data: controller.synthese!,
+                        //     config: MarkdownConfig(configs: [
+                        //       PreConfig(theme: a11yLightTheme),
+                        //     ])),
+                        Text(
+                          controller.synthese!,
+                          style: const TextStyle(
+                            fontSize: 20.0,
+                            fontFamily: 'Montserrat',
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                      : const Text('No data'),
+                  const SizedBox(height: 120),
+                  // ...
+                ],
+              ),
+            ),
+          ],
+        ),
+        floatingActionButton:
+        controller.listImages == null || controller.listImages!.isEmpty
+            ? const SizedBox(height: 0)
+            : FloatingActionButton.large(
+          onPressed: () {
+            // Add your onPressed code here!
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => ImagesPage(
+                      listImages: controller.listImages,
+                    )));
+          },
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          splashColor: Colors.black45,
+          child: const Icon(Icons.photo_album_outlined),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.startFloat);
   }
 
   Future<void> initGenerator() async {
-    final storage = FlutterSecureStorage();
+    const storage = FlutterSecureStorage();
     final apiKey = await storage.read(key: "apiKey");
     language = await storage.read(key: "language") ?? "english";
 
     _prefs = await SharedPreferences.getInstance();
-    // final apiKey = _prefs.getString('apiKey');
 
     if (apiKey == null) {
+      if (!context.mounted) return;
       Navigator.push(context,
           MaterialPageRoute(builder: (context) => const SettingsPage()));
     } else {
@@ -61,12 +190,10 @@ class _GenerationPageState extends State<GenerationPage> {
               receiveTimeout: const Duration(seconds: 60),
               connectTimeout: const Duration(seconds: 60)),
           enableLog: true);
-
-      shared = widget.sharedmedia;
-      synthetizeArticle();
     }
   }
 
+// Synthetize Article
   Future<void> synthetizeArticle() async {
     setState(() {
       _isLoading = true;
@@ -144,13 +271,5 @@ class _GenerationPageState extends State<GenerationPage> {
         });
       }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    var controller =
-        ArticleController(_isLoading, _synthese, title, _listImages);
-
-    return ArticleView(context, controller);
   }
 }

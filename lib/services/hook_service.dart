@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:rid/page/generation_page.dart';
@@ -15,7 +16,7 @@ class HookService {
     log("Awaited shared : ");
     if (shared != null && shared.content?.startsWith('http') == true) {
       if (!context.mounted) return;
-      redirect(context, shared);
+      redirect(context, shared, overwrite: true);
     }
   }
 
@@ -29,7 +30,18 @@ class HookService {
     }
   }
 
-  static void redirect(BuildContext context, SharedMedia media)  {
+  static void redirect(BuildContext context, SharedMedia media,
+      {bool overwrite = false}) {
+    if (overwrite) {
+      Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => GenerationPage(
+                    sharedmedia: media,
+                  )));
+      return;
+    }
+
     Navigator.push(
         context,
         MaterialPageRoute(
