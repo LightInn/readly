@@ -3,6 +3,7 @@ import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:rid/page/generation_page.dart';
+import 'package:rid/page/simplify_page.dart';
 import 'package:share_handler_platform_interface/share_handler_platform_interface.dart';
 
 class HookService {
@@ -36,7 +37,7 @@ class HookService {
       Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) => GenerationPage(
+              builder: (context) => SimplifyPage(
                     sharedmedia: media,
                   )));
       return;
@@ -45,7 +46,7 @@ class HookService {
     Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (context) => GenerationPage(
+            builder: (context) => SimplifyPage(
                   sharedmedia: media,
                 )));
 

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rid/page/welcome_page.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
   runApp(MaterialApp(
     // home: const GenerationPage(), // Back to the roots
     home: const WelcomePage(), // How to page
