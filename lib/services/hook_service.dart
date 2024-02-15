@@ -1,8 +1,6 @@
 import 'dart:developer';
-import 'dart:ffi';
 
 import 'package:flutter/material.dart';
-import 'package:rid/page/generation_page.dart';
 import 'package:rid/page/simplify_page.dart';
 import 'package:share_handler_platform_interface/share_handler_platform_interface.dart';
 
