@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rid/model/article_controller.dart';
+import 'package:rid/page/generation_page.dart';
 import 'package:rid/page/images_page.dart';
 import 'package:rid/page/liste_page.dart';
 import 'package:rid/page/settings_page.dart';
@@ -80,8 +81,8 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => ImagesPage(
-                                listImages: controller.listImages,
+                          builder: (context) => GenerationPage(
+                                articleController: controller,
                               )));
                 },
                 backgroundColor: Colors.white,

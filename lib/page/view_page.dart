@@ -34,8 +34,13 @@ class _ViewPageState extends State<ViewPage> {
 
   @override
   Widget build(BuildContext context) {
-    var controller = ArticleController(false, widget.synthese.synthese,
-        widget.synthese.title, widget.synthese.listImages, false);
+    var controller = ArticleController(
+        false,
+        widget.synthese.synthese,
+        widget.synthese.title,
+        widget.synthese.listImages,
+        false,
+        widget.synthese.url);
 
     return ArticleView(context, controller);
   }
