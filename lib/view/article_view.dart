@@ -51,14 +51,6 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
                                   ),
                                 ),
                                 const SizedBox(height: 30),
-
-                                // TODO : Interpreter le markdown
-
-                                // MarkdownWidget(
-                                //     data: controller.synthese!,
-                                //     config: MarkdownConfig(configs: [
-                                //       PreConfig(theme: a11yLightTheme),
-                                //     ])),
                                 Text(
                                   controller.synthese!,
                                   style: const TextStyle(
@@ -79,22 +71,49 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
         ],
       ),
       floatingActionButton:
-          controller.listImages == null || controller.listImages!.isEmpty
-              ? const SizedBox(height: 0)
-              : FloatingActionButton.large(
-                  onPressed: () {
-                    // Add your onPressed code here!
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => ImagesPage(
-                                  listImages: controller.listImages,
-                                )));
-                  },
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
-                  splashColor: Colors.black45,
-                  child: const Icon(Icons.photo_album_outlined),
-                ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat);
+          Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+        //  FLOAT ACTION FOR IA GENERATION
+        controller.isOpenAI
+            ? FloatingActionButton(
+                onPressed: () {
+                  // Add your onPressed code here!
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ImagesPage(
+                                listImages: controller.listImages,
+                              )));
+                },
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black87,
+                splashColor: Colors.black45,
+                child: const Icon(Icons.spa_outlined),
+              )
+            : const SizedBox(),
+        const SizedBox(
+          height: 10,
+        ),
+
+        // FLOAT ACTION FOR IMAGES PAGE
+
+        controller.listImages == null || controller.listImages!.isEmpty
+            ? const SizedBox()
+            : FloatingActionButton(
+                onPressed: () {
+                  // Add your onPressed code here!
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ImagesPage(
+                                listImages: controller.listImages,
+                              )));
+                },
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black87,
+                splashColor: Colors.black45,
+                child: const Icon(Icons.photo_album_outlined),
+              ),
+      ]),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat //
+      );
 }
