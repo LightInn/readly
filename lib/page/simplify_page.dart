@@ -50,7 +50,7 @@ class _SimplifyPageState extends State<SimplifyPage> {
 
     // Fetch the content from the URL
     final response = await http.get(
-      Uri.parse("https://readly-proxy.lightin.io/?u=${shared!.content}"),
+      Uri.parse("https://readly.lightin.io/?url=${shared!.content}"),
       headers: {'Content-Type': 'application/json;'},
     );
     if (response.statusCode == 200) {
