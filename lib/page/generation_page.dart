@@ -69,10 +69,11 @@ class _GenerationPageState extends State<GenerationPage> {
 
     if (articleController.content != null) {
       final request = ChatCompleteText(messages: [
-        Messages(
-            role: Role.user,
-            content:
-                'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information from the global website (all the information may not be related to the current article) to create a concise and informative summary. Present the data in a clear and digestible manner, using tables or a condensed format like TL/DR or bullet point, according to the best way to tell important part of the information. Ensure the answer is free of redundancies. The answer must be in $language. Content to analyze: "${articleController.content}"')
+        Map.of({
+          "role": "user",
+          "content":
+              'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information from the global website (all the information may not be related to the current article) to create a concise and informative summary. Present the data in a clear and digestible manner, using tables or a condensed format like TL/DR or bullet point, according to the best way to tell important part of the information. Ensure the answer is free of redundancies. The answer must be in $language. Content to analyze: "${articleController.content}"'
+        })
       ], maxToken: 2000, model: GptTurboChatModel());
 
       final res =
@@ -123,7 +124,6 @@ class _GenerationPageState extends State<GenerationPage> {
           _isLoading = false;
         });
       }
-
     }
   }
 
