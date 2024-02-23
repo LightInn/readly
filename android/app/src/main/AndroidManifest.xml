@@ -1,10 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="al.brev.rid">
+          package="al.brev.readly">
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <application
-        android:label="Rid"
+        android:label="Readly"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
     >

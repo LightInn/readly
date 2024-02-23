@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:rid/model/synthese.dart';
-import 'package:rid/page/view_page.dart';
+import 'package:readly/model/synthese.dart';
+import 'package:readly/page/view_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

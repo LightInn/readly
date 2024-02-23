@@ -1,4 +1,4 @@
-# rid
+# readly
 
 Simplify web pages
 

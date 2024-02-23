@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:rid/model/article_controller.dart';
-import 'package:rid/page/generation_page.dart';
-import 'package:rid/page/images_page.dart';
-import 'package:rid/page/liste_page.dart';
-import 'package:rid/page/settings_page.dart';
+import 'package:readly/model/article_controller.dart';
+import 'package:readly/page/generation_page.dart';
+import 'package:readly/page/images_page.dart';
+import 'package:readly/page/liste_page.dart';
+import 'package:readly/page/settings_page.dart';
 
 Scaffold ArticleView(BuildContext context, ArticleController controller) {
   return Scaffold(
@@ -25,7 +25,7 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
               icon: const Icon(Icons.settings)),
         ],
         title: Text(controller.title.toString() == "null"
-            ? "Rid"
+            ? "Readly"
             : controller.title.toString()),
       ),
       body: Column(

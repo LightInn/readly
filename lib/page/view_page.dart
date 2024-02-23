@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rid/model/article_controller.dart';
-import 'package:rid/view/article_view.dart';
+import 'package:readly/model/article_controller.dart';
+import 'package:readly/view/article_view.dart';
 
 import '../model/synthese.dart';
 

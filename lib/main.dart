@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rid/page/welcome_page.dart';
+import 'package:readly/page/welcome_page.dart';
 
 void main() {
   runApp(MaterialApp(

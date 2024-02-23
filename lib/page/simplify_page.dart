@@ -7,9 +7,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html;
 import 'package:http/http.dart' as http;
-import 'package:rid/model/article_controller.dart';
-import 'package:rid/services/fetch_service.dart';
-import 'package:rid/view/article_view.dart';
+import 'package:readly/model/article_controller.dart';
+import 'package:readly/services/fetch_service.dart';
+import 'package:readly/view/article_view.dart';
 import 'package:share_handler_platform_interface/share_handler_platform_interface.dart';
 
 class SimplifyPage extends StatefulWidget {
@@ -50,7 +50,7 @@ class _SimplifyPageState extends State<SimplifyPage> {
 
     // Fetch the content from the URL
     final response = await http.get(
-      Uri.parse("https://rid-proxy.lightin.io/?u=${shared!.content}"),
+      Uri.parse("https://readly-proxy.lightin.io/?u=${shared!.content}"),
       headers: {'Content-Type': 'application/json;'},
     );
     if (response.statusCode == 200) {

@@ -5,9 +5,9 @@ import 'dart:developer';
 import 'package:chat_gpt_sdk/chat_gpt_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:rid/model/article_controller.dart';
-import 'package:rid/page/settings_page.dart';
-import 'package:rid/view/article_view.dart';
+import 'package:readly/model/article_controller.dart';
+import 'package:readly/page/settings_page.dart';
+import 'package:readly/view/article_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class GenerationPage extends StatefulWidget {
