@@ -1,6 +1,6 @@
 # readly
 
-Simplify web pages
+A new Flutter project.
 
 ## Getting Started
 

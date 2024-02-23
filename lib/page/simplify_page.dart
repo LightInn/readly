@@ -22,13 +22,14 @@ class SimplifyPage extends StatefulWidget {
 }
 
 class _SimplifyPageState extends State<SimplifyPage> {
-  late bool _isOpenAI;
   SharedMedia? shared;
   String? domContent;
   String? title;
   String? textContent;
   String? _synthese;
   bool _isLoading = false;
+
+  bool _isOpenAI = false;
   final List<String> _listImages = [];
 
   @override
@@ -41,16 +42,17 @@ class _SimplifyPageState extends State<SimplifyPage> {
   // parse Arcticle
   Future<void> parseArticle() async {
     const storage = FlutterSecureStorage();
-    _isOpenAI = await storage.read(key: "apiKey") != null ? true : false;
+    var isOpenAI = await storage.read(key: "apiKey") != null ? true : false;
 
     setState(() {
       _isLoading = true;
       _synthese = "";
+      _isOpenAI = isOpenAI;
     });
 
     // Fetch the content from the URL
     final response = await http.get(
-      Uri.parse("https://readly.lightin.io/?url=${shared!.content}"),
+      Uri.parse("https://readly.lightin.io/api/read?url=${shared!.content}"),
       headers: {'Content-Type': 'application/json;'},
     );
     if (response.statusCode == 200) {
@@ -75,8 +77,8 @@ class _SimplifyPageState extends State<SimplifyPage> {
 
   @override
   Widget build(BuildContext context) {
-    var controller =
-        ArticleController(_isLoading, _synthese, title, _listImages, _isOpenAI, shared!.content);
+    var controller = ArticleController(
+        _isLoading, _synthese, title, _listImages, _isOpenAI, shared!.content);
 
     return ArticleView(context, controller);
   }
