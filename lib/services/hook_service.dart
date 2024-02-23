@@ -1,7 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:rid/page/simplify_page.dart';
+import 'package:readly/page/simplify_page.dart';
 import 'package:share_handler_platform_interface/share_handler_platform_interface.dart';
 
 class HookService {

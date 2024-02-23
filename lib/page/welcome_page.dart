@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rid/page/settings_page.dart';
-import 'package:rid/services/hook_service.dart';
+import 'package:readly/page/settings_page.dart';
+import 'package:readly/services/hook_service.dart';
 
 // The WelcomePage is the first page of the app. it have the "how to" information and have a button to go to the settings page
 class WelcomePage extends StatefulWidget {
@@ -25,7 +25,7 @@ class _WelcomePageState extends State<WelcomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text("Rid"),
+          title: const Text("Readly"),
           actions: [
             IconButton(
                 onPressed: () {
@@ -45,7 +45,7 @@ class _WelcomePageState extends State<WelcomePage> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(children: [
                   const Text(
-                    "Welcome on Rid !",
+                    "Welcome on Readly !",
                     style: TextStyle(
                       fontSize: 26.0,
                       fontFamily: 'Montserrat',
@@ -54,7 +54,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   ),
                   const SizedBox(height: 30),
                   const Text(
-                    "Rid is an application that generates text summaries from press articles.",
+                    "Readly is an application that generates text summaries from press articles.",
                     style: TextStyle(
                       fontSize: 18.0,
                       fontFamily: 'Montserrat',

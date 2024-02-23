@@ -1,4 +1,4 @@
-package al.brev.rid
+package al.brev.readly
 
 import io.flutter.embedding.android.FlutterActivity
 
