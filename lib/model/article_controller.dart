@@ -1,14 +1,17 @@
 class ArticleController {
   final bool isLoading;
-  final String? synthese;
-  final String? pageTitle;
-
-  final String? url;
-
-  List<String>? listImages;
-
   final bool isOpenAI;
+  final String? content;
+  final String? title;
+  final String? url;
+  List<String>? imagesList;
 
   ArticleController(
-      this.isLoading, this.synthese, this.pageTitle, this.listImages, this.isOpenAI, this.url);
+      this.isLoading, //
+      this.content, //
+      this.title, //
+      this.imagesList, //
+      this.isOpenAI, //
+      this.url //
+      );
 }

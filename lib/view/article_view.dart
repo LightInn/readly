@@ -24,9 +24,9 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
               },
               icon: const Icon(Icons.settings)),
         ],
-        title: Text(controller.pageTitle.toString() == "null"
+        title: Text(controller.title.toString() == "null"
             ? "Rid"
-            : controller.pageTitle.toString()),
+            : controller.title.toString()),
       ),
       body: Column(
         children: [
@@ -38,13 +38,13 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
                     ? const Center(
                         child: CircularProgressIndicator(),
                       )
-                    : controller.synthese != null && controller.synthese != ""
+                    : controller.content != null && controller.content != ""
                         ? Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
                               children: [
                                 Text(
-                                  controller.pageTitle.toString(),
+                                  controller.title.toString(),
                                   style: const TextStyle(
                                     fontSize: 26.0,
                                     fontFamily: 'Montserrat',
@@ -53,7 +53,7 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
                                 ),
                                 const SizedBox(height: 30),
                                 Text(
-                                  controller.synthese!,
+                                  controller.content!,
                                   style: const TextStyle(
                                     fontSize: 20.0,
                                     fontFamily: 'Montserrat',
@@ -97,7 +97,7 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
 
         // FLOAT ACTION FOR IMAGES PAGE
 
-        controller.listImages == null || controller.listImages!.isEmpty
+        controller.imagesList == null || controller.imagesList!.isEmpty
             ? const SizedBox()
             : FloatingActionButton(
                 onPressed: () {
@@ -106,7 +106,7 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
                       context,
                       MaterialPageRoute(
                           builder: (context) => ImagesPage(
-                                listImages: controller.listImages,
+                                listImages: controller.imagesList,
                               )));
                 },
                 backgroundColor: Colors.white,

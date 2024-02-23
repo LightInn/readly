@@ -13,8 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class GenerationPage extends StatefulWidget {
   final ArticleController articleController;
 
-  const GenerationPage({Key? key, required this.articleController})
-      : super(key: key);
+  const GenerationPage({super.key, required this.articleController});
 
   @override
   State<GenerationPage> createState() => _GenerationPageState();
@@ -27,12 +26,8 @@ class _GenerationPageState extends State<GenerationPage> {
 
   late ArticleController articleController;
 
-  String? domContent;
-  String? title;
-  String? textContent;
   String? _synthese;
   bool _isLoading = false;
-  bool _isSynthetized = false;
   final List<String> _listImages = [];
 
   @override
@@ -41,32 +36,6 @@ class _GenerationPageState extends State<GenerationPage> {
     articleController = widget.articleController;
     initGenerator();
   }
-
-  // // parse Arcticle
-  // Future<void> parseArticle() async {
-  //   setState(() {
-  //     _isLoading = true;
-  //     _synthese = "";
-  //   });
-  //
-  //   // Fetch the content from the URL
-  //   final response = await http.get(
-  //     Uri.parse("https://rid-proxy.lightin.io/?u=${shared!.content}"),
-  //     headers: {'Content-Type': 'application/json;'},
-  //   );
-  //   if (response.statusCode == 200) {
-  //     setState(() {
-  //       final parsedResponse = jsonDecode(response.body);
-  //
-  //       textContent = parsedResponse["textContent"];
-  //       domContent = parsedResponse["content"];
-  //       title = parsedResponse["title"];
-  //
-  //       _synthese = domContent ?? "";
-  //       _isLoading = false;
-  //     });
-  //   }
-  // }
 
   Future<void> initGenerator() async {
     const storage = FlutterSecureStorage();
@@ -98,12 +67,12 @@ class _GenerationPageState extends State<GenerationPage> {
       _synthese = "";
     });
 
-    if (articleController.synthese != null) {
+    if (articleController.content != null) {
       final request = ChatCompleteText(messages: [
         Messages(
             role: Role.user,
             content:
-                'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information from the global website (all the information may not be related to the current article) to create a concise and informative summary. Present the data in a clear and digestible manner, using tables or a condensed format like TL/DR or bullet point, according to the best way to tell important part of the information. Ensure the answer is free of redundancies. The answer must be in $language. Content to analyze: "${articleController.synthese}"')
+                'You are an expert in key information extraction. Analyze the entirety of the content provided on a current affairs topic. Identify and select relevant information from the global website (all the information may not be related to the current article) to create a concise and informative summary. Present the data in a clear and digestible manner, using tables or a condensed format like TL/DR or bullet point, according to the best way to tell important part of the information. Ensure the answer is free of redundancies. The answer must be in $language. Content to analyze: "${articleController.content}"')
       ], maxToken: 2000, model: GptTurboChatModel());
 
       final res =
@@ -127,8 +96,8 @@ class _GenerationPageState extends State<GenerationPage> {
 
           final page_dictionary = {
             "url": articleController.url.toString(),
-            "title": title.toString(),
-            "images": _listImages,
+            "title": articleController.title.toString(),
+            "images": articleController.imagesList.toString(),
             "synthese": _synthese.toString(),
             "date": "${DateTime.now()}"
           };
@@ -147,13 +116,26 @@ class _GenerationPageState extends State<GenerationPage> {
           });
         }
       });
+
+      if (res == null) {
+        if (!context.mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    var controller = ArticleController(_isLoading, _synthese, title,
-        _listImages, false, articleController.url.toString());
+    var controller = ArticleController(
+        _isLoading,
+        _synthese,
+        articleController.title.toString(),
+        _listImages,
+        false,
+        articleController.url.toString());
 
     return ArticleView(context, controller);
   }
