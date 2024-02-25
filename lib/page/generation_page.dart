@@ -98,7 +98,7 @@ class _GenerationPageState extends State<GenerationPage> {
           var articleToSave = Article(
             url: articleController.url.toString(),
             title: articleController.title.toString(),
-            synthese: _synthese.toString(),
+            content: _synthese.toString(),
             // imagesList: articleController.imagesList,
           );
 
