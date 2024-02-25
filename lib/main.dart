@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:readly/page/search_page.dart';
 import 'package:readly/page/welcome_page.dart';
 
 void main() {
   runApp(MaterialApp(
     // home: const GenerationPage(), // Back to the roots
-    home: const WelcomePage(), // How to page
+    home: const SearchPage(), // How to page
     theme: ThemeData(
       brightness: Brightness.dark,
       primaryColor: Colors.lightBlue[800],
