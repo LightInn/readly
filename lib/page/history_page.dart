@@ -3,23 +3,24 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:readly/model/article.dart';
 import 'package:readly/page/view_page.dart';
+import 'package:readly/services/history_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-class ListePage extends StatefulWidget {
-  const ListePage({Key? key}) : super(key: key);
+class HistoryPage extends StatefulWidget {
+  const HistoryPage({Key? key}) : super(key: key);
 
   @override
-  _ListePageState createState() => _ListePageState();
+  _HistoryPageState createState() => _HistoryPageState();
 }
 
-class _ListePageState extends State<ListePage> {
+class _HistoryPageState extends State<HistoryPage> {
   late SharedPreferences _prefs;
 
   bool _isLoading = false;
 
-  late Map<String, dynamic> newsDictionary;
+  late List<Article> articlesList;
 
   @override
   void initState() {
@@ -29,11 +30,10 @@ class _ListePageState extends State<ListePage> {
 
   Future<void> _checkNewsDictionary() async {
     _isLoading = true;
-    _prefs = await SharedPreferences.getInstance();
 
-    final newsDictionary = _prefs.getString('newsDictionary') ?? '{}';
+    var histories = await HistoryService().getAllHistory();
 
-    this.newsDictionary = jsonDecode(newsDictionary);
+    articlesList = histories;
 
     setState(() {
       _isLoading = false;
@@ -56,38 +56,28 @@ class _ListePageState extends State<ListePage> {
               // liste des news dans le dictionnaire
 
               child: ListView.builder(
-                  itemCount: newsDictionary.length,
+                  itemCount: articlesList.length,
                   itemBuilder: (context, index) {
-                    String key = newsDictionary.keys.elementAt(index);
                     return Card(
                       child: ListTile(
                         onTap: () {
-                          // final url = this.newsDictionary[key]['url'];
-                          Article gen = Article(
-                            url: newsDictionary[key]['url'],
-                            title: newsDictionary[key]['title'],
-                            content: newsDictionary[key]['synthese'],
-                            listImagesUrls: [],
-                            // TODO get list images
-                            // listImages: newsDictionary[key]['images'],
-                          );
                           Navigator.push(
                               context,
                               MaterialPageRoute(
                                   builder: (context) => ViewPage(
-                                        synthese: gen,
+                                        synthese: articlesList[index],
                                       )));
                         },
-                        title: Text(newsDictionary[key]['title'] ?? "??"),
-                        subtitle: Text(newsDictionary[key]['date'] ?? "??"),
+                        title: Text(articlesList[index].title ?? "??"),
+                        subtitle: Text(articlesList[index].date.toString()),
                         splashColor: Colors.white38,
                         trailing: IconButton(
                           icon: const Icon(Icons.delete),
                           onPressed: () async {
                             setState(() {
-                              newsDictionary.remove(key);
-                              _prefs.setString(
-                                  'newsDictionary', jsonEncode(newsDictionary));
+                              articlesList.remove(index);
+                              HistoryService()
+                                  .deleteHistory(articlesList[index].url);
                             });
                           },
                         ),

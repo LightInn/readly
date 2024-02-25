@@ -71,7 +71,11 @@ class _SimplifyPageState extends State<SimplifyPage> {
 
       // save the article to the history
       HistoryService().saveHistory(Article(
-          url: shared!.content ?? "", title: title!, content: textContent!));
+        url: shared!.content ?? "",
+        title: title!,
+        content: textContent!,
+        listImagesUrls: _listImages,
+      ));
 
       setState(() {
         _isLoading = false;

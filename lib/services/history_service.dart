@@ -20,7 +20,7 @@ class HistoryService {
     final page_dictionary = {
       "url": article.url.toString(),
       "title": article.title.toString(),
-      // "images": article.imagesList.toString(),
+      "images": article.listImagesUrls.toString(),
       "content": article.content.toString(),
       "date": "${DateTime.now()}"
     };
@@ -52,8 +52,45 @@ class HistoryService {
       url: article["url"],
       title: article["title"],
       content: article["content"],
-      // imagesList: article["images"],
+      listImagesUrls: article["images"],
       date: article["date"],
     );
+  }
+
+  Future<List<Article>> getAllHistory() async {
+    // initialiser les préférences
+    await iniPrefs();
+
+    // get the newsDictionary from the shared preferences
+    final newsDictionary =
+        jsonDecode(_prefs.getString("newsDictionary") ?? "{}");
+
+    // convert all the articles to Article objects
+    final List<Article> articles = newsDictionary.values.map((article) {
+      return Article(
+        url: article["url"],
+        title: article["title"],
+        content: article["content"],
+        listImagesUrls: article["images"],
+        date: article["date"],
+      );
+    });
+
+    return articles;
+  }
+
+  void deleteHistory(String url) {
+    // initialiser les préférences
+    iniPrefs();
+
+    // get the newsDictionary from the shared preferences
+    final newsDictionary =
+        jsonDecode(_prefs.getString("newsDictionary") ?? "{}");
+
+    // remove the article from the newsDictionary
+    newsDictionary.remove(url);
+
+    // save the newsDictionary to the shared preferences
+    _prefs.setString("newsDictionary", jsonEncode(newsDictionary));
   }
 }

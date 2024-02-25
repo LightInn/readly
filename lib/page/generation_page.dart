@@ -28,9 +28,8 @@ class _GenerationPageState extends State<GenerationPage> {
 
   late ArticleController articleController;
 
-  String? _synthese;
+  String? _content;
   bool _isLoading = false;
-  final List<String> _listImages = [];
 
   @override
   void initState() {
@@ -66,7 +65,7 @@ class _GenerationPageState extends State<GenerationPage> {
   Future<void> synthetizeArticle() async {
     setState(() {
       _isLoading = true;
-      _synthese = "";
+      _content = "";
     });
 
     if (articleController.content != null) {
@@ -86,11 +85,11 @@ class _GenerationPageState extends State<GenerationPage> {
           setState(() {
             log("res.choices?.first.message!.content: ${it.choices?.last.message?.content}");
 
-            _synthese = _synthese.toString() +
-                (it.choices?.last.message?.content ?? "");
+            _content =
+                _content.toString() + (it.choices?.last.message?.content ?? "");
 
             _isLoading =
-                it.choices?.last.message?.content != null && _synthese != ""
+                it.choices?.last.message?.content != null && _content != ""
                     ? false
                     : true;
           });
@@ -98,8 +97,8 @@ class _GenerationPageState extends State<GenerationPage> {
           var articleToSave = Article(
             url: articleController.url.toString(),
             title: articleController.title.toString(),
-            content: _synthese.toString(),
-            // imagesList: articleController.imagesList,
+            content: _content.toString(),
+            listImagesUrls: articleController.listImagesUrls,
           );
 
           // save the article to the history
@@ -124,9 +123,9 @@ class _GenerationPageState extends State<GenerationPage> {
   Widget build(BuildContext context) {
     var controller = ArticleController(
         _isLoading,
-        _synthese,
+        _content,
         articleController.title.toString(),
-        _listImages,
+        articleController.listImagesUrls,
         false,
         articleController.url.toString());
 
