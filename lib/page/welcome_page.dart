@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:readly/page/settings_page.dart';
 import 'package:readly/services/hook_service.dart';
 
@@ -14,7 +15,14 @@ class _WelcomePageState extends State<WelcomePage> {
   @override
   void initState() {
     super.initState();
+    saveWelcomeCheck();
     pageRedirect();
+  }
+
+  void saveWelcomeCheck() async {
+    // secure storage
+    var storage = FlutterSecureStorage();
+    await storage.write(key: "welcome", value: "true");
   }
 
   void pageRedirect() async {
@@ -83,7 +91,16 @@ class _WelcomePageState extends State<WelcomePage> {
                       )),
                   const SizedBox(height: 30),
                   const Text(
-                    "To get started, you'll need to enter your OpenIA api key.\n Click on the button below to access the settings.",
+                    "You can also copy the url and paste it in the search bar",
+                    style: TextStyle(
+                      fontSize: 18.0,
+                      fontFamily: 'Montserrat',
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  const Text(
+                    "To fully enjoy the power of the application, enter your OpenIA api key.\n Click on the button below to access the settings.",
                     style: TextStyle(
                       fontSize: 18.0,
                       fontFamily: 'Montserrat',
