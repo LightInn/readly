@@ -6,7 +6,9 @@ import 'package:chat_gpt_sdk/chat_gpt_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:readly/model/article_controller.dart';
+import 'package:readly/model/synthese.dart';
 import 'package:readly/page/settings_page.dart';
+import 'package:readly/services/history_service.dart';
 import 'package:readly/view/article_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -93,24 +95,15 @@ class _GenerationPageState extends State<GenerationPage> {
                     : true;
           });
 
-          // convert en JSON
+          var articleToSave = Synthese(
+            url: articleController.url.toString(),
+            title: articleController.title.toString(),
+            synthese: _synthese.toString(),
+            // imagesList: articleController.imagesList,
+          );
 
-          final page_dictionary = {
-            "url": articleController.url.toString(),
-            "title": articleController.title.toString(),
-            "images": articleController.imagesList.toString(),
-            "synthese": _synthese.toString(),
-            "date": "${DateTime.now()}"
-          };
-
-          final newsDictionary =
-              jsonDecode(_prefs.getString("newsDictionary") ?? "{}");
-
-          newsDictionary[articleController.url.toString()] = page_dictionary;
-
-          log("newsDictionary: ${newsDictionary.toString()}");
-
-          _prefs.setString("newsDictionary", jsonEncode(newsDictionary));
+          // save the article to the history
+          HistoryService().saveHistory(articleToSave);
         } else {
           setState(() {
             _isLoading = false;

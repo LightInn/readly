@@ -8,7 +8,9 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html;
 import 'package:http/http.dart' as http;
 import 'package:readly/model/article_controller.dart';
+import 'package:readly/model/synthese.dart';
 import 'package:readly/services/fetch_service.dart';
+import 'package:readly/services/history_service.dart';
 import 'package:readly/view/article_view.dart';
 import 'package:share_handler_platform_interface/share_handler_platform_interface.dart';
 
@@ -66,6 +68,10 @@ class _SimplifyPageState extends State<SimplifyPage> {
       // Fetch the images using service
       final dom.Document document = html.parse(domContent);
       _listImages.addAll(FetchService.getImageList(document));
+
+      // save the article to the history
+      HistoryService().saveHistory(Synthese(
+          url: shared!.content ?? "", title: title!, synthese: textContent!));
 
       setState(() {
         _isLoading = false;
