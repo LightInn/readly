@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:readly/model/article_controller.dart';
 import 'package:readly/view/article_view.dart';
 
-import '../model/synthese.dart';
+import '../model/article.dart';
 
 class ViewPage extends StatefulWidget {
-  final Synthese synthese;
+  final Article synthese;
 
   const ViewPage({Key? key, required this.synthese}) : super(key: key);
 
@@ -14,7 +14,7 @@ class ViewPage extends StatefulWidget {
 }
 
 class _ViewPageState extends State<ViewPage> {
-  Synthese get synthese => widget.synthese;
+  Article get synthese => widget.synthese;
 
   TextEditingController _apiKeyController = TextEditingController();
 

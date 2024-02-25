@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:readly/model/synthese.dart';
+import 'package:readly/model/article.dart';
 import 'package:readly/page/view_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,7 +63,7 @@ class _ListePageState extends State<ListePage> {
                       child: ListTile(
                         onTap: () {
                           // final url = this.newsDictionary[key]['url'];
-                          Synthese gen = Synthese(
+                          Article gen = Article(
                             url: newsDictionary[key]['url'],
                             title: newsDictionary[key]['title'],
                             synthese: newsDictionary[key]['synthese'],

@@ -1,13 +1,11 @@
-
-
-class Synthese {
+class Article {
   late String url;
   String? title;
   List<String>? listImages;
   String? synthese;
   late DateTime date;
 
-  Synthese({
+  Article({
     required this.url,
     this.title,
     this.listImages,
