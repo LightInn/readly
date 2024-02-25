@@ -6,7 +6,7 @@ import 'package:chat_gpt_sdk/chat_gpt_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:readly/model/article_controller.dart';
-import 'package:readly/model/synthese.dart';
+import 'package:readly/model/article.dart';
 import 'package:readly/page/settings_page.dart';
 import 'package:readly/services/history_service.dart';
 import 'package:readly/view/article_view.dart';
@@ -95,7 +95,7 @@ class _GenerationPageState extends State<GenerationPage> {
                     : true;
           });
 
-          var articleToSave = Synthese(
+          var articleToSave = Article(
             url: articleController.url.toString(),
             title: articleController.title.toString(),
             synthese: _synthese.toString(),

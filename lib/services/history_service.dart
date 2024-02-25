@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:html/dom.dart';
-import 'package:readly/model/synthese.dart';
+import 'package:readly/model/article.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HistoryService {
@@ -12,7 +12,7 @@ class HistoryService {
     _prefs = await SharedPreferences.getInstance();
   }
 
-  saveHistory(Synthese article) async {
+  saveHistory(Article article) async {
     // initialiser les préférences
     await iniPrefs();
 
@@ -36,7 +36,7 @@ class HistoryService {
     _prefs.setString("newsDictionary", jsonEncode(newsDictionary));
   }
 
-  Future<Synthese> getHistory(String url) async {
+  Future<Article> getHistory(String url) async {
     // initialiser les préférences
     await iniPrefs();
 
@@ -48,7 +48,7 @@ class HistoryService {
     final article = newsDictionary[url];
 
     // convert the article to an Article object
-    return Synthese(
+    return Article(
       url: article["url"],
       title: article["title"],
       synthese: article["content"],
