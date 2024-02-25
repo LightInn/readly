@@ -1,15 +1,15 @@
 class Article {
   late String url;
   String? title;
-  List<String>? listImages;
-  String? synthese;
+  List<String>? listImagesUrls;
+  String? content;
   late DateTime date;
 
   Article({
     required this.url,
     this.title,
-    this.listImages,
-    this.synthese,
+    this.listImagesUrls,
+    this.content,
     DateTime? date,
   }) : date = date ?? DateTime.now();
 }

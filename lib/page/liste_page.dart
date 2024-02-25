@@ -66,8 +66,8 @@ class _ListePageState extends State<ListePage> {
                           Article gen = Article(
                             url: newsDictionary[key]['url'],
                             title: newsDictionary[key]['title'],
-                            synthese: newsDictionary[key]['synthese'],
-                            listImages: [],
+                            content: newsDictionary[key]['synthese'],
+                            listImagesUrls: [],
                             // TODO get list images
                             // listImages: newsDictionary[key]['images'],
                           );

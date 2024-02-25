@@ -36,9 +36,9 @@ class _ViewPageState extends State<ViewPage> {
   Widget build(BuildContext context) {
     var controller = ArticleController(
         false,
-        widget.synthese.synthese,
+        widget.synthese.content,
         widget.synthese.title,
-        widget.synthese.listImages,
+        widget.synthese.listImagesUrls,
         false,
         widget.synthese.url);
 

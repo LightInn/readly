@@ -21,7 +21,7 @@ class HistoryService {
       "url": article.url.toString(),
       "title": article.title.toString(),
       // "images": article.imagesList.toString(),
-      "content": article.synthese.toString(),
+      "content": article.content.toString(),
       "date": "${DateTime.now()}"
     };
 
@@ -51,7 +51,7 @@ class HistoryService {
     return Article(
       url: article["url"],
       title: article["title"],
-      synthese: article["content"],
+      content: article["content"],
       // imagesList: article["images"],
       date: article["date"],
     );
