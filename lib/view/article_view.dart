@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:readly/model/article_controller.dart';
 import 'package:readly/page/generation_page.dart';
 import 'package:readly/page/images_page.dart';
-import 'package:readly/page/liste_page.dart';
+import 'package:readly/page/history_page.dart';
 import 'package:readly/page/settings_page.dart';
 
 Scaffold ArticleView(BuildContext context, ArticleController controller) {
@@ -11,7 +11,7 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
         leading: IconButton.outlined(
             onPressed: () {
               Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const ListePage()));
+                  MaterialPageRoute(builder: (context) => const HistoryPage()));
             },
             icon: const Icon(Icons.account_tree_outlined)),
         actions: [
@@ -97,7 +97,7 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
 
         // FLOAT ACTION FOR IMAGES PAGE
 
-        controller.imagesList == null || controller.imagesList!.isEmpty
+        controller.listImagesUrls == null || controller.listImagesUrls!.isEmpty
             ? const SizedBox()
             : FloatingActionButton(
                 onPressed: () {
@@ -106,7 +106,7 @@ Scaffold ArticleView(BuildContext context, ArticleController controller) {
                       context,
                       MaterialPageRoute(
                           builder: (context) => ImagesPage(
-                                listImages: controller.imagesList,
+                                listImages: controller.listImagesUrls,
                               )));
                 },
                 backgroundColor: Colors.white,

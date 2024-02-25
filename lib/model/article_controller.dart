@@ -4,13 +4,13 @@ class ArticleController {
   final String? content;
   final String? title;
   final String? url;
-  List<String>? imagesList;
+  List<String>? listImagesUrls;
 
   ArticleController(
       this.isLoading, //
       this.content, //
       this.title, //
-      this.imagesList, //
+      this.listImagesUrls, //
       this.isOpenAI, //
       this.url //
       );
