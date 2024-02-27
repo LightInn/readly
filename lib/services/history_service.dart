@@ -20,7 +20,7 @@ class HistoryService {
     final page_dictionary = {
       "url": article.url.toString(),
       "title": article.title.toString(),
-      "images": article.listImagesUrls.toString(),
+      "images": jsonEncode(article.listImagesUrls),
       "content": article.content.toString(),
       "date": "${DateTime.now()}"
     };
@@ -65,23 +65,28 @@ class HistoryService {
     final newsDictionary =
         jsonDecode(_prefs.getString("newsDictionary") ?? "{}");
 
-    // convert all the articles to Article objects
-    final List<Article> articles = newsDictionary.values.map((article) {
+    print(newsDictionary);
+
+    // Convertir toutes les valeurs (chaque article) en objets Article
+    var articles = newsDictionary.values.map<Article>((articleMap) {
+      // Assure-toi que articleMap est bien un Map avant de l'utiliser
+      Map<String, dynamic> article = Map<String, dynamic>.from(articleMap);
+
       return Article(
-        url: article["url"],
-        title: article["title"],
-        content: article["content"],
-        listImagesUrls: article["images"],
-        date: article["date"],
-      );
-    });
+          url: article['url'],
+          title: article['title'],
+          content: article['content'],
+          listImagesUrls: List<String>.from(jsonDecode(article['images'])),
+          // Convertir en List<String> si nécessaire
+          date: DateTime.parse(article['date']));
+    }).toList(); // Convertir le résultat itérable en List avec toList()
 
     return articles;
   }
 
-  void deleteHistory(String url) {
+  Future<void> deleteHistory(String url) async {
     // initialiser les préférences
-    iniPrefs();
+    await iniPrefs();
 
     // get the newsDictionary from the shared preferences
     final newsDictionary =

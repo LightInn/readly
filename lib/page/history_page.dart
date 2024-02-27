@@ -20,7 +20,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   bool _isLoading = false;
 
-  late List<Article> articlesList;
+  late List<Article> _articlesList;
 
   @override
   void initState() {
@@ -33,9 +33,8 @@ class _HistoryPageState extends State<HistoryPage> {
 
     var histories = await HistoryService().getAllHistory();
 
-    articlesList = histories;
-
     setState(() {
+      _articlesList = histories;
       _isLoading = false;
     });
   }
@@ -56,7 +55,7 @@ class _HistoryPageState extends State<HistoryPage> {
               // liste des news dans le dictionnaire
 
               child: ListView.builder(
-                  itemCount: articlesList.length,
+                  itemCount: _articlesList.length,
                   itemBuilder: (context, index) {
                     return Card(
                       child: ListTile(
@@ -65,19 +64,19 @@ class _HistoryPageState extends State<HistoryPage> {
                               context,
                               MaterialPageRoute(
                                   builder: (context) => ViewPage(
-                                        synthese: articlesList[index],
+                                        synthese: _articlesList[index],
                                       )));
                         },
-                        title: Text(articlesList[index].title ?? "??"),
-                        subtitle: Text(articlesList[index].date.toString()),
+                        title: Text(_articlesList[index].title ?? "??"),
+                        subtitle: Text(_articlesList[index].date.toString()),
                         splashColor: Colors.white38,
                         trailing: IconButton(
                           icon: const Icon(Icons.delete),
                           onPressed: () async {
+                            await HistoryService()
+                                .deleteHistory(_articlesList[index].url);
                             setState(() {
-                              articlesList.remove(index);
-                              HistoryService()
-                                  .deleteHistory(articlesList[index].url);
+                              _checkNewsDictionary();
                             });
                           },
                         ),
