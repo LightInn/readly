@@ -23,11 +23,16 @@ class HookService {
   static void _handleHookChange(SharedMedia media, BuildContext context) async {
     log("Hook change !!! ");
 
-    if (media.content?.startsWith('http') == true) {
+    // Utiliser une expression régulière pour extraire l'URL
+    RegExp urlPattern = RegExp(r'(http[s]?://[^\s]+)');
+    String? extractedUrl = urlPattern.firstMatch(media.content ?? '')?.group(0);
+
+    if (extractedUrl != null && extractedUrl.startsWith('http')) {
       if (!context.mounted) return;
-      redirect(context, media);
+      redirect(context, extractedUrl as SharedMedia);
     }
   }
+
 
   static void redirect(BuildContext context, SharedMedia media,
       {bool overwrite = false}) {
