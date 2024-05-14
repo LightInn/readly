@@ -18,7 +18,7 @@ jobs:
           flutter pub get
           dart pub outdated
           dart format
-          flutter build appbundle --debug
+          flutter build appbundle --release
           
     
 
