@@ -13,26 +13,36 @@ class HookService {
 
     SharedMedia? shared = await handler.getInitialSharedMedia();
     log("Awaited shared : ");
-    if (shared != null && shared.content?.startsWith('http') == true) {
+
+    if (shared != null) {
+      RegExp urlPattern = RegExp(r'(http[s]?://\S+)');
+      String? extractedUrl =
+          urlPattern.firstMatch(shared.content ?? '')?.group(0);
+
+      var extractedMedia = SharedMedia(content: extractedUrl);
+
       if (!context.mounted) return;
-      redirect(context, shared, overwrite: true);
+      redirect(context, extractedMedia, overwrite: true);
     }
   }
 
   // Only if a new url is shared
   static void _handleHookChange(SharedMedia media, BuildContext context) async {
     log("Hook change !!! ");
+    log(media.content.toString());
 
     // Utiliser une expression régulière pour extraire l'URL
-    RegExp urlPattern = RegExp(r'(http[s]?://[^\s]+)');
+    RegExp urlPattern = RegExp(r'(http[s]?://\S+)');
     String? extractedUrl = urlPattern.firstMatch(media.content ?? '')?.group(0);
+    log(extractedUrl.toString());
+
+    var extractedMedia = SharedMedia(content: extractedUrl);
 
     if (extractedUrl != null && extractedUrl.startsWith('http')) {
       if (!context.mounted) return;
-      redirect(context, extractedUrl as SharedMedia);
+      redirect(context, extractedMedia);
     }
   }
-
 
   static void redirect(BuildContext context, SharedMedia media,
       {bool overwrite = false}) {
