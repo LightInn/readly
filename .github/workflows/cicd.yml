@@ -1,4 +1,4 @@
-name: build
+name: try-ci
 on: [ pull_request ]
 jobs:
   try-ci:
