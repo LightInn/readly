@@ -71,6 +71,7 @@ android {
         }
         debug {
             signingConfig signingConfigs.debug
+            // Vous pouvez également ajouter des configurations de ProGuard pour le debug si nécessaire
         }
     }
 }
