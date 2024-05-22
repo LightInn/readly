@@ -37,7 +37,7 @@ dependencies:
   url_launcher: 6.2.6
   shared_preferences: 2.2.3
   cupertino_icons: 1.0.8
-  flutter_secure_storage: 9.2.1
+  flutter_secure_storage: 9.2.2
   animated_image_list: 1.0.0
 
 
