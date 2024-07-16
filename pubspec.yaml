@@ -31,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   share_handler: 0.0.21
-  http: 1.2.1
+  http: 1.2.2
   html: 0.15.4
   chat_gpt_sdk: 3.0.8
   url_launcher: 6.3.0
