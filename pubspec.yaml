@@ -30,7 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  share_handler: 0.0.21
+  share_handler: 0.0.22
   http: 1.2.2
   html: 0.15.4
   chat_gpt_sdk: 3.0.8
