@@ -33,7 +33,7 @@ dependencies:
   share_handler: 0.0.25
   http: 1.6.0
   html: 0.15.6
-  chat_gpt_sdk: 3.0.8
+  chat_gpt_sdk: 3.1.5
   url_launcher: 6.3.1
   shared_preferences: 2.3.3
   cupertino_icons: 1.0.8
