@@ -36,7 +36,7 @@ dependencies:
   chat_gpt_sdk: 3.0.8
   url_launcher: 6.3.1
   shared_preferences: 2.3.3
-  cupertino_icons: 1.0.8
+  cupertino_icons: 1.0.9
   flutter_secure_storage: 9.2.4
   animated_image_list: 1.0.0
 
