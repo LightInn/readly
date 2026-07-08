@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/db/database.dart';
-import '../../data/services/anthropic_service.dart';
+import '../../data/services/ai_service.dart';
 import '../../providers.dart';
 import '../../widgets/common.dart';
 
@@ -73,14 +73,13 @@ class _SummaryPageState extends ConsumerState<SummaryPage> {
       _needsApiKey = false;
     });
 
-    final anthropic = await ref.read(anthropicServiceProvider.future);
+    final ai = await ref.read(aiServiceProvider.future);
     if (!mounted) return;
-    if (anthropic == null) {
+    if (ai == null) {
       setState(() {
         _status = _Status.error;
         _needsApiKey = true;
-        _error =
-            'Add your Anthropic API key in settings to summarize articles.';
+        _error = 'Add your OpenAI API key in settings to summarize articles.';
       });
       return;
     }
@@ -99,7 +98,7 @@ class _SummaryPageState extends ConsumerState<SummaryPage> {
         _status = _Status.streaming;
       });
 
-      _subscription = anthropic
+      _subscription = ai
           .streamArticleSummary(
             title: article.title,
             text: article.text,
@@ -109,7 +108,7 @@ class _SummaryPageState extends ConsumerState<SummaryPage> {
             (delta) => setState(() => _summary += delta),
             onError: (Object e) => setState(() {
               _status = _Status.error;
-              _error = e is AnthropicException ? e.message : '$e';
+              _error = e is AiException ? e.message : '$e';
             }),
             onDone: () async {
               if (!mounted) return;
@@ -131,7 +130,7 @@ class _SummaryPageState extends ConsumerState<SummaryPage> {
       if (!mounted) return;
       setState(() {
         _status = _Status.error;
-        _error = e is AnthropicException ? e.message : '$e';
+        _error = e is AiException ? e.message : '$e';
       });
     }
   }

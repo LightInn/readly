@@ -2,6 +2,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:readly/data/services/article_extractor.dart';
 
 void main() {
+  group('parseProxyResponse', () {
+    test('reads title and textContent from the readability proxy', () {
+      final article = ArticleExtractor.parseProxyResponse(
+        '{"title":"Big News","textContent":"The clean article text.",'
+        '"content":"<p>The clean article text.</p>"}',
+        fallbackTitle: 'https://example.com',
+      );
+      expect(article.title, 'Big News');
+      expect(article.text, 'The clean article text.');
+    });
+
+    test('falls back to the URL when the title is missing', () {
+      final article = ArticleExtractor.parseProxyResponse(
+        '{"textContent":"Some text."}',
+        fallbackTitle: 'https://example.com/x',
+      );
+      expect(article.title, 'https://example.com/x');
+    });
+
+    test('throws when the proxy returns no text', () {
+      expect(
+        () => ArticleExtractor.parseProxyResponse(
+          '{"title":"Empty","textContent":""}',
+          fallbackTitle: 'u',
+        ),
+        throwsException,
+      );
+    });
+  });
+
   test('extracts title and paragraphs, ignoring scripts and navigation', () {
     const source = '''
 <html>

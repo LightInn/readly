@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/db/database.dart';
 import '../../data/meal_type.dart';
-import '../../data/services/anthropic_service.dart';
+import '../../data/services/ai_service.dart';
 import '../../providers.dart';
 import '../../widgets/common.dart';
 
@@ -33,7 +33,7 @@ class MealsPage extends ConsumerWidget {
         AsyncError(:final error) => EmptyState(
           icon: Icons.error_outline,
           title: 'Could not get suggestions',
-          message: error is AnthropicException ? error.message : '$error',
+          message: error is AiException ? error.message : '$error',
           action: FilledButton(
             onPressed: () =>
                 ref.read(mealSuggestionsProvider.notifier).generate(),
@@ -58,7 +58,7 @@ class _Idle extends ConsumerWidget {
         icon: Icons.key_off,
         title: 'AI is not set up yet',
         message:
-            'Add your Anthropic API key in settings to unlock meal '
+            'Add your OpenAI API key in settings to unlock meal '
             'suggestions and article summaries.',
         action: FilledButton.icon(
           icon: const Icon(Icons.settings),
@@ -159,11 +159,26 @@ class _MealCard extends ConsumerWidget {
               runSpacing: 8,
               children: [
                 Chip(
-                  avatar: const Icon(Icons.schedule, size: 18),
+                  avatar: Icon(
+                    Icons.schedule,
+                    size: 18,
+                    color: scheme.onSecondaryContainer,
+                  ),
+                  backgroundColor: scheme.secondaryContainer,
+                  labelStyle: TextStyle(color: scheme.onSecondaryContainer),
                   label: Text('${meal.timeMinutes} min'),
                 ),
                 Chip(
-                  avatar: const Icon(Icons.local_fire_department, size: 18),
+                  avatar: Icon(
+                    Icons.local_fire_department,
+                    size: 18,
+                    color: scheme.onTertiaryContainer,
+                  ),
+                  backgroundColor: scheme.tertiaryContainer,
+                  labelStyle: TextStyle(
+                    color: scheme.onTertiaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
                   label: Text('${meal.kcal.round()} kcal'),
                 ),
               ],

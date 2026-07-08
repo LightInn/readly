@@ -32,7 +32,7 @@ class SettingsService {
   }) : _secure = secureStorage ?? const FlutterSecureStorage(),
        _prefsOverride = prefs;
 
-  static const _apiKeyKey = 'anthropicApiKey';
+  static const _apiKeyKey = 'openaiApiKey';
   static const _languageKey = 'language';
   static const _kcalGoalKey = 'dailyKcalGoal';
   static const defaultKcalGoal = 2200;

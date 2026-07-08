@@ -12,8 +12,8 @@ Transform Readly from a single-purpose "article summarizer" into a personal **kc
 | Local database | `drift` (SQLite) + `drift_flutter` | Type-safe, reactive streams drive the UI, testable |
 | Barcode scanning | `mobile_scanner` 7.x | Maintained, CameraX-based |
 | Food data | Open Food Facts API v2 (plain `http`, `User-Agent` set) | Free, no key, FR products well covered |
-| AI | Anthropic Messages API via raw HTTP (`claude-opus-4-8`), BYOK key in `flutter_secure_storage` | `chat_gpt_sdk` is dead; no official Dart SDK → raw HTTP + SSE streaming; structured outputs (`output_config.format`) for meals/groceries |
-| Article extraction | In-app: fetch page + strip text with `html` package | Removes dependency on the (likely dead) `readly.lightin.io` readability API |
+| AI | ~~Anthropic raw HTTP~~ → `dart_openai` (`gpt-5-nano`), BYOK key in `flutter_secure_storage` | v3.1: user prefers the OpenAI models router; streaming for summaries, `json_schema` response format for meals/groceries |
+| Article extraction | `readly.lightin.io/api/read` readability proxy, in-app `html` stripping as fallback | v3.1: the proxy strips HTML/JS/CSS server-side and keeps only the article text — better signal than in-app stripping |
 | Fonts | `google_fonts` (Outfit / Manrope style) | Clean rounded look without bundling font files |
 | Lint/CI | `flutter_lints` 6 + stricter rules; GitHub Actions: analyze → test → build | There was no analyze/test step at all |
 
@@ -65,8 +65,23 @@ Transform Readly from a single-purpose "article summarizer" into a personal **kc
 - [x] Unit tests: OFF response parsing, SSE stream parsing, AI JSON parsing, article extraction, DB queries
 - [x] Widget test: app boots, 5 tabs navigate
 - [x] `flutter analyze` clean, `dart format` clean
-- [ ] `flutter build apk` passes
+- [x] `flutter build apk` passes
 - [x] Delete dead code (old pages/services), update README
+
+## Readly 3.1 — feedback pass (2026-07)
+
+Guiding idea: **sliders are estimates, not scales.** Nobody knows to the gram how much
+they ate or how much is left — every quantity in the app is a fraction of the package
+(or a number of units for eggs & co), with the already-consumed part greyed out.
+
+- [x] AI: swap Anthropic → `dart_openai` with `gpt-5-nano` (BYOK OpenAI key in settings)
+- [x] Read: restore the `readly.lightin.io/api/read` readability proxy (in-app extraction kept as fallback)
+- [x] DB v2: `PantryItems.unitCount` (unit-tracked foods) + `PantryItems.perishable`, migration included
+- [x] Kitchen: newest item on top; search bar; "Perishable" + "Finished" filter chips
+- [x] Kitchen: slider hidden by default (thin colored gauge instead), appears on tap; % for weight-based items, units for unit-based (eggs → 0–12)
+- [x] Kitchen: quick actions on each card — "I ate some" (portion slider → logs kcal + decrements stock) and "add to groceries"
+- [x] Track: portion slider (fraction of the package, consumed part greyed) instead of the "portion (g)" field; pantry logs keep stock in sync
+- [x] Color pass: vibrant scheme variant, per-meal-type accent colors, gradient kcal ring, level-colored stock gauges — still sober
 
 ### Later / ideas (not in this pass)
 - [ ] Decrement pantry quantities automatically when a meal is cooked

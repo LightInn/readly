@@ -4,16 +4,56 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/db/database.dart';
+import '../../data/quantity.dart';
 import '../../data/services/off_service.dart';
 import '../../providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/log_portion_sheet.dart';
 
-class KitchenPage extends ConsumerWidget {
+/// Color of the "amount left" indicator: green when plenty, amber when
+/// running low, red when almost gone.
+Color amountLeftColor(double amountLeft, ColorScheme scheme) {
+  if (amountLeft > 0.5) return const Color(0xFF3E9B4F);
+  if (amountLeft > 0.2) return const Color(0xFFE8930C);
+  return scheme.error;
+}
+
+class KitchenPage extends ConsumerStatefulWidget {
   const KitchenPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<KitchenPage> createState() => _KitchenPageState();
+}
+
+class _KitchenPageState extends ConsumerState<KitchenPage> {
+  final _searchController = TextEditingController();
+  bool _perishableOnly = false;
+  bool _showFinished = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<PantryItem> _visibleItems(List<PantryItem> pantry) {
+    final query = _searchController.text.trim().toLowerCase();
+    return [
+      for (final item in pantry)
+        if (item.isConsumed == _showFinished &&
+            (!_perishableOnly || item.perishable) &&
+            (query.isEmpty ||
+                item.name.toLowerCase().contains(query) ||
+                (item.brand?.toLowerCase().contains(query) ?? false)))
+          item,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pantry = ref.watch(pantryProvider).value ?? [];
+    final visible = _visibleItems(pantry);
+    final finishedCount = pantry.where((i) => i.isConsumed).length;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,11 +78,81 @@ class KitchenPage extends ConsumerWidget {
                   'Scan the barcodes of what you have at home to build your '
                   'inventory — the meal maker uses it to suggest what to cook.',
             )
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-              itemCount: pantry.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _PantryCard(item: pantry[index]),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: TextField(
+                    controller: _searchController,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Search your kitchen…',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () =>
+                                  setState(_searchController.clear),
+                            ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Row(
+                    children: [
+                      FilterChip(
+                        avatar: Icon(
+                          Icons.eco,
+                          size: 18,
+                          color: _perishableOnly
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : const Color(0xFFE8930C),
+                        ),
+                        label: const Text('Perishable'),
+                        selected: _perishableOnly,
+                        selectedColor: const Color(0xFFE8930C),
+                        showCheckmark: false,
+                        onSelected: (v) => setState(() => _perishableOnly = v),
+                      ),
+                      const SizedBox(width: 8),
+                      FilterChip(
+                        avatar: Icon(
+                          Icons.hourglass_empty,
+                          size: 18,
+                          color: _showFinished
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        label: Text('Finished ($finishedCount)'),
+                        selected: _showFinished,
+                        selectedColor: Theme.of(context).colorScheme.error,
+                        showCheckmark: false,
+                        onSelected: (v) => setState(() => _showFinished = v),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: visible.isEmpty
+                      ? const EmptyState(
+                          icon: Icons.search_off,
+                          title: 'Nothing matches',
+                          message:
+                              'No item matches the current search or filters.',
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                          itemCount: visible.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) =>
+                              _PantryCard(item: visible[index]),
+                        ),
+                ),
+              ],
             ),
     );
   }
@@ -124,6 +234,7 @@ class _PantryCard extends ConsumerStatefulWidget {
 }
 
 class _PantryCardState extends ConsumerState<_PantryCard> {
+  bool _expanded = false;
   double? _pendingAmount;
 
   @override
@@ -131,85 +242,210 @@ class _PantryCardState extends ConsumerState<_PantryCard> {
     final item = widget.item;
     final scheme = Theme.of(context).colorScheme;
     final amount = _pendingAmount ?? item.amountLeft;
+    final color = amountLeftColor(amount, scheme);
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _Thumbnail(imageUrl: item.imageUrl),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        // The adjust slider only appears once you tap the item.
+        onTap: () => setState(() => _expanded = !_expanded),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _Thumbnail(imageUrl: item.imageUrl),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                item.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            if (item.perishable)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 6),
+                                child: Icon(
+                                  Icons.eco,
+                                  size: 16,
+                                  color: Color(0xFFE8930C),
+                                ),
+                              ),
+                          ],
+                        ),
+                        Text(
+                          [
+                            if (item.brand != null) item.brand!,
+                            if (item.packageQuantity != null)
+                              item.packageQuantity!,
+                            if (item.unitCount != null)
+                              '${item.unitCount} units',
+                            if (item.kcalPer100g != null)
+                              '${item.kcalPer100g!.round()} kcal/100g',
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'I ate some',
+                    icon: const Icon(Icons.restaurant),
+                    color: scheme.primary,
+                    onPressed: item.isConsumed ? null : () => _eatSome(),
+                  ),
+                  IconButton(
+                    tooltip: 'Add to groceries',
+                    icon: const Icon(Icons.add_shopping_cart),
+                    color: scheme.tertiary,
+                    onPressed: () => _addToGroceries(),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) => _onMenu(value),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      PopupMenuItem(
+                        value: 'refill',
+                        child: Text('Refill to 100%'),
                       ),
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (_expanded) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: amount,
+                        divisions: item.isUnitBased ? item.unitCount : 20,
+                        activeColor: color,
+                        onChanged: (v) => setState(() => _pendingAmount = v),
+                        onChangeEnd: (v) {
+                          setState(() => _pendingAmount = null);
+                          ref
+                              .read(databaseProvider)
+                              .updatePantryItem(
+                                item.id,
+                                PantryItemsCompanion(amountLeft: Value(v)),
+                              );
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 56,
+                      child: Text(
+                        _amountLabel(item, amount),
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ] else
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: amount,
+                            minHeight: 6,
+                            color: color,
+                            backgroundColor: scheme.surfaceContainerHighest,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Text(
-                        [
-                          if (item.brand != null) item.brand!,
-                          if (item.packageQuantity != null)
-                            item.packageQuantity!,
-                          if (item.kcalPer100g != null)
-                            '${item.kcalPer100g!.round()} kcal/100g',
-                        ].join(' · '),
+                        item.isConsumed
+                            ? 'Finished'
+                            : _amountLabel(item, amount),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                          color: color,
                         ),
                       ),
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  onSelected: (value) => _onMenu(value),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    PopupMenuItem(
-                      value: 'shop',
-                      child: Text('Add to groceries'),
-                    ),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: Slider(
-                    value: amount,
-                    onChanged: (v) => setState(() => _pendingAmount = v),
-                    onChangeEnd: (v) {
-                      ref
-                          .read(databaseProvider)
-                          .updatePantryItem(
-                            item.id,
-                            PantryItemsCompanion(amountLeft: Value(v)),
-                          );
-                    },
-                  ),
-                ),
-                SizedBox(
-                  width: 48,
-                  child: Text(
-                    '${(amount * 100).round()}%',
-                    textAlign: TextAlign.end,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  static String _amountLabel(PantryItem item, double amount) {
+    if (item.isUnitBased) {
+      final units = (amount * item.unitCount!).round().clamp(
+        0,
+        item.unitCount!,
+      );
+      return '$units/${item.unitCount}';
+    }
+    return '${(amount * 100).round()}%';
+  }
+
+  Future<void> _eatSome() async {
+    final item = widget.item;
+    final result = await showEatPantryItemSheet(context, item);
+    if (result == null) return;
+    final db = ref.read(databaseProvider);
+    await db.logConsumption(
+      ConsumptionEntriesCompanion.insert(
+        name: item.name,
+        kcal: result.kcal,
+        mealType: result.mealType.value,
+        pantryItemId: Value(item.id),
+        grams: Value(result.grams),
+      ),
+    );
+    await db.updatePantryItem(
+      item.id,
+      PantryItemsCompanion(
+        amountLeft: Value((item.amountLeft - result.fraction).clamp(0.0, 1.0)),
+      ),
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logged ${result.kcal.round()} kcal — stock updated.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _addToGroceries() async {
+    await ref
+        .read(databaseProvider)
+        .addShoppingItem(ShoppingItemsCompanion.insert(name: widget.item.name));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('"${widget.item.name}" added to groceries.')),
+      );
+    }
   }
 
   Future<void> _onMenu(String value) async {
@@ -217,17 +453,11 @@ class _PantryCardState extends ConsumerState<_PantryCard> {
     switch (value) {
       case 'edit':
         await showPantryEditSheet(context, ref, existing: widget.item);
-      case 'shop':
-        await db.addShoppingItem(
-          ShoppingItemsCompanion.insert(name: widget.item.name),
+      case 'refill':
+        await db.updatePantryItem(
+          widget.item.id,
+          const PantryItemsCompanion(amountLeft: Value(1.0)),
         );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('"${widget.item.name}" added to groceries.'),
-            ),
-          );
-        }
       case 'delete':
         await db.deletePantryItem(widget.item.id);
     }
@@ -249,15 +479,18 @@ class _Thumbnail extends StatelessWidget {
         height: 52,
         child: imageUrl == null
             ? ColoredBox(
-                color: scheme.surfaceContainerHigh,
-                child: Icon(Icons.fastfood, color: scheme.onSurfaceVariant),
+                color: scheme.secondaryContainer,
+                child: Icon(Icons.fastfood, color: scheme.onSecondaryContainer),
               )
             : Image.network(
                 imageUrl!,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => ColoredBox(
-                  color: scheme.surfaceContainerHigh,
-                  child: Icon(Icons.fastfood, color: scheme.onSurfaceVariant),
+                  color: scheme.secondaryContainer,
+                  child: Icon(
+                    Icons.fastfood,
+                    color: scheme.onSecondaryContainer,
+                  ),
                 ),
               ),
       ),
@@ -301,6 +534,8 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
   late final TextEditingController _brand;
   late final TextEditingController _kcal;
   late final TextEditingController _package;
+  late final TextEditingController _units;
+  late bool _perishable;
 
   @override
   void initState() {
@@ -315,6 +550,8 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
     _package = TextEditingController(
       text: e?.packageQuantity ?? p?.quantity ?? '',
     );
+    _units = TextEditingController(text: e?.unitCount?.toString() ?? '');
+    _perishable = e?.perishable ?? false;
   }
 
   @override
@@ -323,6 +560,7 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
     _brand.dispose();
     _kcal.dispose();
     _package.dispose();
+    _units.dispose();
     super.dispose();
   }
 
@@ -333,6 +571,7 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
     final kcal = double.tryParse(_kcal.text.replaceAll(',', '.'));
     final brand = _brand.text.trim();
     final package = _package.text.trim();
+    final units = int.tryParse(_units.text.trim());
     final p = widget.product;
 
     if (widget.existing != null) {
@@ -343,6 +582,8 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
           brand: Value(brand.isEmpty ? null : brand),
           kcalPer100g: Value(kcal),
           packageQuantity: Value(package.isEmpty ? null : package),
+          unitCount: Value((units ?? 0) > 0 ? units : null),
+          perishable: Value(_perishable),
         ),
       );
     } else {
@@ -358,6 +599,8 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
           sugarsPer100g: Value(p?.sugarsPer100g),
           fatsPer100g: Value(p?.fatsPer100g),
           packageQuantity: Value(package.isEmpty ? null : package),
+          unitCount: Value((units ?? 0) > 0 ? units : null),
+          perishable: Value(_perishable),
         ),
       );
     }
@@ -409,7 +652,24 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _units,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Units per package (e.g. 12 eggs — optional)',
+              helperText: 'When set, quantities are tracked in units, not %',
+            ),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Perishable'),
+            subtitle: const Text('Fresh food that should be eaten first'),
+            secondary: const Icon(Icons.eco, color: Color(0xFFE8930C)),
+            value: _perishable,
+            onChanged: (v) => setState(() => _perishable = v),
+          ),
+          const SizedBox(height: 8),
           FilledButton.icon(
             icon: const Icon(Icons.check),
             label: Text(widget.existing == null ? 'Add item' : 'Save'),

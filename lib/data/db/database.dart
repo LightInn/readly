@@ -18,6 +18,13 @@ class PantryItems extends Table {
   /// Human readable package size, e.g. "500 g".
   TextColumn get packageQuantity => text().nullable()();
 
+  /// For foods counted in units (eggs, yogurts…): units per full package.
+  /// Null means the item is tracked as a percentage of the package.
+  IntColumn get unitCount => integer().nullable()();
+
+  /// Perishable foods should be eaten first.
+  BoolColumn get perishable => boolean().withDefault(const Constant(false))();
+
   /// Estimated fraction left in the package, 0.0 to 1.0.
   RealColumn get amountLeft => real().withDefault(const Constant(1.0))();
   DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
@@ -67,12 +74,27 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(pantryItems, pantryItems.unitCount);
+        await m.addColumn(pantryItems, pantryItems.perishable);
+      }
+    },
+  );
 
   // ---- Pantry ----
 
+  /// Newest additions first, so what you just bought sits on top.
   Stream<List<PantryItem>> watchPantry() =>
-      (select(pantryItems)..orderBy([(t) => OrderingTerm.asc(t.name)])).watch();
+      (select(pantryItems)..orderBy([
+            (t) => OrderingTerm.desc(t.addedAt),
+            (t) => OrderingTerm.desc(t.id),
+          ]))
+          .watch();
 
   Future<int> addPantryItem(PantryItemsCompanion item) =>
       into(pantryItems).insert(item);
