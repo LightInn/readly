@@ -37,6 +37,14 @@ void main() {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
 
+    // Bounded pumps instead of pumpAndSettle: the app keeps light background
+    // activity (font loading, platform channels) that never fully settles in
+    // the test environment.
+    Future<void> pump() async {
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -46,27 +54,31 @@ void main() {
         child: const ReadlyApp(),
       ),
     );
-    await tester.pumpAndSettle();
+    await pump();
 
     // Track tab is home.
     expect(find.text('Today'), findsOneWidget);
     expect(find.text('Log food'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.kitchen_outlined));
-    await tester.pumpAndSettle();
+    await pump();
     expect(find.text('Your kitchen is empty'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.restaurant_menu_outlined));
-    await tester.pumpAndSettle();
+    await pump();
     expect(find.text('AI is not set up yet'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.shopping_basket_outlined));
-    await tester.pumpAndSettle();
+    await pump();
     expect(find.text('Nothing to buy'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.auto_stories_outlined));
-    await tester.pumpAndSettle();
+    await pump();
     expect(find.text('No summaries yet'), findsOneWidget);
+
+    // Flush any lingering timers (stream cleanup, snackbars, etc.) so the
+    // framework's end-of-test invariants pass.
+    await tester.pump(const Duration(minutes: 2));
   });
 
   test('extractUrl pulls the first link out of shared text', () {
