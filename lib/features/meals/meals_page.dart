@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,16 +7,22 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/db/database.dart';
 import '../../data/meal_type.dart';
+import '../../data/quantity.dart';
 import '../../data/services/ai_service.dart';
 import '../../providers.dart';
 import '../../widgets/common.dart';
+import '../kitchen/kitchen_page.dart' show amountLeftColor;
+
+List<String> _decodeList(String json) =>
+    (jsonDecode(json) as List<dynamic>).cast<String>();
 
 class MealsPage extends ConsumerWidget {
   const MealsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final suggestions = ref.watch(mealSuggestionsProvider);
+    final generation = ref.watch(mealSuggestionsProvider);
+    final meals = ref.watch(savedMealsProvider).value ?? [];
     final hasApiKey = ref.watch(settingsProvider).value?.hasApiKey ?? false;
 
     return Scaffold(
@@ -27,8 +35,7 @@ class MealsPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: switch (suggestions) {
-        null => _Idle(hasApiKey: hasApiKey),
+      body: switch (generation) {
         AsyncLoading() => const _Loading(),
         AsyncError(:final error) => EmptyState(
           icon: Icons.error_outline,
@@ -40,7 +47,11 @@ class MealsPage extends ConsumerWidget {
             child: const Text('Try again'),
           ),
         ),
-        AsyncValue(:final value?) => _SuggestionList(meals: value),
+        // Idle or done: the saved batch (persisted across restarts) rules.
+        _ =>
+          meals.isEmpty
+              ? _Idle(hasApiKey: hasApiKey)
+              : _SuggestionList(meals: meals),
       },
     );
   }
@@ -108,7 +119,7 @@ class _Loading extends StatelessWidget {
 class _SuggestionList extends ConsumerWidget {
   const _SuggestionList({required this.meals});
 
-  final List<MealSuggestion> meals;
+  final List<SavedMeal> meals;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -134,11 +145,15 @@ class _SuggestionList extends ConsumerWidget {
 class _MealCard extends ConsumerWidget {
   const _MealCard({required this.meal});
 
-  final MealSuggestion meal;
+  final SavedMeal meal;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final usedIngredients = _decodeList(meal.usedIngredients);
+    final missingIngredients = _decodeList(meal.missingIngredients);
+    final steps = _decodeList(meal.steps);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -183,7 +198,7 @@ class _MealCard extends ConsumerWidget {
                 ),
               ],
             ),
-            if (meal.usedIngredients.isNotEmpty) ...[
+            if (usedIngredients.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
                 'From your kitchen',
@@ -191,11 +206,11 @@ class _MealCard extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                meal.usedIngredients.join(' · '),
+                usedIngredients.join(' · '),
                 style: TextStyle(color: scheme.onSurfaceVariant),
               ),
             ],
-            if (meal.missingIngredients.isNotEmpty) ...[
+            if (missingIngredients.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
                 'Missing — tap to add to groceries',
@@ -206,7 +221,7 @@ class _MealCard extends ConsumerWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final ingredient in meal.missingIngredients)
+                  for (final ingredient in missingIngredients)
                     ActionChip(
                       avatar: const Icon(Icons.add_shopping_cart, size: 18),
                       label: Text(ingredient),
@@ -216,7 +231,7 @@ class _MealCard extends ConsumerWidget {
                 ],
               ),
             ],
-            if (meal.steps.isNotEmpty) ...[
+            if (steps.isNotEmpty) ...[
               const SizedBox(height: 8),
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
@@ -226,7 +241,7 @@ class _MealCard extends ConsumerWidget {
                   style: Theme.of(context).textTheme.labelLarge,
                 ),
                 children: [
-                  for (final (index, step) in meal.steps.indexed)
+                  for (final (index, step) in steps.indexed)
                     ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
@@ -242,11 +257,17 @@ class _MealCard extends ConsumerWidget {
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton.tonalIcon(
-                icon: const Icon(Icons.check),
-                label: const Text('I made it'),
-                onPressed: () => _logMeal(context, ref),
-              ),
+              child: meal.done
+                  ? FilledButton.tonalIcon(
+                      icon: Icon(Icons.check_circle, color: scheme.primary),
+                      label: const Text('Already done'),
+                      onPressed: null,
+                    )
+                  : FilledButton.tonalIcon(
+                      icon: const Icon(Icons.check),
+                      label: const Text('I made it'),
+                      onPressed: () => _logMeal(context, ref, usedIngredients),
+                    ),
             ),
           ],
         ),
@@ -275,7 +296,11 @@ class _MealCard extends ConsumerWidget {
     }
   }
 
-  Future<void> _logMeal(BuildContext context, WidgetRef ref) async {
+  Future<void> _logMeal(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> usedIngredients,
+  ) async {
     final type = await showModalBottomSheet<MealType>(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -291,7 +316,7 @@ class _MealCard extends ConsumerWidget {
             ),
             for (final type in MealType.values)
               ListTile(
-                leading: Icon(type.icon),
+                leading: Icon(type.icon, color: type.color),
                 title: Text(type.label),
                 onTap: () => Navigator.pop(sheetContext, type),
               ),
@@ -300,19 +325,188 @@ class _MealCard extends ConsumerWidget {
       ),
     );
     if (type == null) return;
-    await ref
-        .read(databaseProvider)
-        .logConsumption(
-          ConsumptionEntriesCompanion.insert(
-            name: meal.title,
-            kcal: meal.kcal,
-            mealType: type.value,
-          ),
-        );
-    if (context.mounted) {
+    final db = ref.read(databaseProvider);
+    await db.logConsumption(
+      ConsumptionEntriesCompanion.insert(
+        name: meal.title,
+        kcal: meal.kcal,
+        mealType: type.value,
+      ),
+    );
+    await db.setSavedMealDone(meal.id);
+
+    // Cooking used up ingredients: offer to adjust the kitchen quantities.
+    if (!context.mounted) return;
+    final pantry = await ref.read(pantryProvider.future);
+    final used = matchUsedPantryItems(pantry, usedIngredients);
+    if (!context.mounted) return;
+    if (used.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Logged ${meal.kcal.round()} kcal. Enjoy!')),
       );
+      return;
     }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _UpdateKitchenSheet(mealTitle: meal.title, items: used),
+    );
+  }
+}
+
+/// Fuzzy-matches the AI's free-text ingredient names against pantry items.
+/// Exposed for testing.
+List<PantryItem> matchUsedPantryItems(
+  List<PantryItem> pantry,
+  List<String> ingredients,
+) {
+  Set<String> words(String s) => s
+      .toLowerCase()
+      .split(RegExp(r'[^a-zà-ÿ0-9]+'))
+      .where((w) => w.length >= 3)
+      .toSet();
+
+  bool matches(PantryItem item, String ingredient) {
+    final name = item.name.toLowerCase();
+    final ing = ingredient.toLowerCase();
+    if (name.contains(ing) || ing.contains(name)) return true;
+    return words(item.name).intersection(words(ingredient)).isNotEmpty;
+  }
+
+  return [
+    for (final item in pantry)
+      if (!item.isConsumed && ingredients.any((i) => matches(item, i))) item,
+  ];
+}
+
+/// After "I made it": sliders to estimate what is left of each ingredient
+/// the meal used.
+class _UpdateKitchenSheet extends ConsumerStatefulWidget {
+  const _UpdateKitchenSheet({required this.mealTitle, required this.items});
+
+  final String mealTitle;
+  final List<PantryItem> items;
+
+  @override
+  ConsumerState<_UpdateKitchenSheet> createState() =>
+      _UpdateKitchenSheetState();
+}
+
+class _UpdateKitchenSheetState extends ConsumerState<_UpdateKitchenSheet> {
+  late final Map<int, double> _amounts = {
+    for (final item in widget.items) item.id: item.amountLeft,
+  };
+
+  Future<void> _save() async {
+    final db = ref.read(databaseProvider);
+    for (final item in widget.items) {
+      final amount = _amounts[item.id]!;
+      if (amount != item.amountLeft) {
+        await db.updatePantryItem(
+          item.id,
+          PantryItemsCompanion(amountLeft: Value(amount)),
+        );
+      }
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Update your kitchen',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Estimate what is left of the ingredients "${widget.mealTitle}" '
+              'used.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final item in widget.items)
+                    _AmountRow(
+                      item: item,
+                      amount: _amounts[item.id]!,
+                      onChanged: (v) => setState(() => _amounts[item.id] = v),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              icon: const Icon(Icons.check),
+              label: const Text('Save quantities'),
+              onPressed: _save,
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Skip'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AmountRow extends StatelessWidget {
+  const _AmountRow({
+    required this.item,
+    required this.amount,
+    required this.onChanged,
+  });
+
+  final PantryItem item;
+  final double amount;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = amountLeftColor(amount, scheme);
+    final label = item.isUnitBased
+        ? '${(amount * item.unitCount!).round()}/${item.unitCount}'
+        : '${(amount * 100).round()}%';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(item.name, style: Theme.of(context).textTheme.titleSmall),
+        Row(
+          children: [
+            Expanded(
+              child: Slider(
+                value: amount,
+                divisions: item.isUnitBased ? item.unitCount : 20,
+                activeColor: color,
+                onChanged: onChanged,
+              ),
+            ),
+            SizedBox(
+              width: 56,
+              child: Text(
+                label,
+                textAlign: TextAlign.end,
+                style: TextStyle(fontWeight: FontWeight.w700, color: color),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

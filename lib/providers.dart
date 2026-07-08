@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/db/database.dart';
@@ -88,12 +90,19 @@ final articlesProvider = StreamProvider<List<Article>>(
   (ref) => ref.watch(databaseProvider).watchArticles(),
 );
 
-// ---- AI results kept in memory ----
+/// The last generated meal suggestions, persisted in the database so they
+/// survive app restarts.
+final savedMealsProvider = StreamProvider<List<SavedMeal>>(
+  (ref) => ref.watch(databaseProvider).watchSavedMeals(),
+);
 
-class MealSuggestionsNotifier
-    extends Notifier<AsyncValue<List<MealSuggestion>>?> {
+// ---- AI generation state ----
+
+/// Tracks only the in-flight generation (loading/error); the resulting meals
+/// live in the database (see [savedMealsProvider]).
+class MealSuggestionsNotifier extends Notifier<AsyncValue<void>?> {
   @override
-  AsyncValue<List<MealSuggestion>>? build() => null;
+  AsyncValue<void>? build() => null;
 
   Future<void> generate() async {
     final ai = await ref.read(aiServiceProvider.future);
@@ -112,8 +121,8 @@ class MealSuggestionsNotifier
     final eaten = entries.fold<double>(0, (sum, e) => sum + e.kcal);
     final remaining = settings.dailyKcalGoal - eaten;
 
-    state = await AsyncValue.guard(
-      () => ai.suggestMeals(
+    state = await AsyncValue.guard(() async {
+      final meals = await ai.suggestMeals(
         pantry: [
           for (final item in pantry)
             if (!item.isConsumed)
@@ -143,15 +152,26 @@ class MealSuggestionsNotifier
         dailyGoalKcal: settings.dailyKcalGoal.toDouble(),
         remainingKcal: remaining.clamp(300, 4000).toDouble(),
         language: settings.language,
-      ),
-    );
+      );
+      await ref.read(databaseProvider).replaceSavedMeals([
+        for (final meal in meals)
+          SavedMealsCompanion.insert(
+            title: meal.title,
+            description: meal.description,
+            timeMinutes: meal.timeMinutes,
+            kcal: meal.kcal,
+            usedIngredients: jsonEncode(meal.usedIngredients),
+            missingIngredients: jsonEncode(meal.missingIngredients),
+            steps: jsonEncode(meal.steps),
+          ),
+      ]);
+    });
   }
 
   void clear() => state = null;
 }
 
 final mealSuggestionsProvider =
-    NotifierProvider<
-      MealSuggestionsNotifier,
-      AsyncValue<List<MealSuggestion>>?
-    >(MealSuggestionsNotifier.new);
+    NotifierProvider<MealSuggestionsNotifier, AsyncValue<void>?>(
+      MealSuggestionsNotifier.new,
+    );
