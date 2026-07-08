@@ -83,6 +83,8 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
             name: suggestion.name,
             note: Value(suggestion.reason),
             source: const Value('ai'),
+            quantity: Value(suggestion.quantity),
+            estimatedPrice: Value(suggestion.priceEur),
           ),
         );
         added++;
@@ -109,6 +111,18 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
     }
   }
 
+  /// "note · 500 g · ~2.50 €" — whatever is known about the item.
+  static Widget? _subtitleFor(ShoppingItem item) {
+    final parts = [
+      if (item.note != null) item.note!,
+      if (item.quantity != null) item.quantity!,
+      if (item.estimatedPrice != null)
+        '~${item.estimatedPrice!.toStringAsFixed(2)} €',
+    ];
+    if (parts.isEmpty) return null;
+    return Text(parts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis);
+  }
+
   Future<void> _deleteWithUndo(ShoppingItem item) async {
     final db = ref.read(databaseProvider);
     final messenger = ScaffoldMessenger.of(context);
@@ -124,6 +138,8 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
               note: Value(item.note),
               done: Value(item.done),
               source: Value(item.source),
+              quantity: Value(item.quantity),
+              estimatedPrice: Value(item.estimatedPrice),
               addedAt: Value(item.addedAt),
             ),
           ),
@@ -184,6 +200,10 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
   Widget build(BuildContext context) {
     final items = ref.watch(shoppingProvider).value ?? [];
     final hasDone = items.any((i) => i.done);
+    // Rough cart total for what still has to be bought.
+    final remainingPrice = items
+        .where((i) => !i.done && i.estimatedPrice != null)
+        .fold<double>(0, (sum, i) => sum + i.estimatedPrice!);
 
     return Scaffold(
       appBar: AppBar(
@@ -230,6 +250,27 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
               onSubmitted: (_) => _addManual(),
             ),
           ),
+          if (remainingPrice > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.shopping_cart_checkout,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.tertiary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Estimated cart: ≈ ${remainingPrice.toStringAsFixed(2)} €',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: items.isEmpty
                 ? const EmptyState(
@@ -265,13 +306,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                                   )
                                 : null,
                           ),
-                          subtitle: item.note == null
-                              ? null
-                              : Text(
-                                  item.note!,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                          subtitle: _subtitleFor(item),
                           secondary: item.source == 'ai'
                               ? const Icon(Icons.auto_awesome, size: 18)
                               : null,

@@ -6,21 +6,29 @@ class AppSettings {
     required this.hasApiKey,
     required this.language,
     required this.dailyKcalGoal,
+    required this.dailyBurnKcal,
   });
 
   final bool hasApiKey;
   final String language;
   final int dailyKcalGoal;
 
+  /// Estimated natural daily energy expenditure (maintenance kcal). The
+  /// difference with what is eaten builds the cumulative-deficit stat
+  /// (7700 kcal ≈ 1 kg of fat).
+  final int dailyBurnKcal;
+
   AppSettings copyWith({
     bool? hasApiKey,
     String? language,
     int? dailyKcalGoal,
+    int? dailyBurnKcal,
   }) {
     return AppSettings(
       hasApiKey: hasApiKey ?? this.hasApiKey,
       language: language ?? this.language,
       dailyKcalGoal: dailyKcalGoal ?? this.dailyKcalGoal,
+      dailyBurnKcal: dailyBurnKcal ?? this.dailyBurnKcal,
     );
   }
 }
@@ -35,7 +43,9 @@ class SettingsService {
   static const _apiKeyKey = 'openaiApiKey';
   static const _languageKey = 'language';
   static const _kcalGoalKey = 'dailyKcalGoal';
+  static const _kcalBurnKey = 'dailyBurnKcal';
   static const defaultKcalGoal = 2200;
+  static const defaultKcalBurn = 2200;
   static const defaultLanguage = 'english';
 
   final FlutterSecureStorage _secure;
@@ -59,10 +69,12 @@ class SettingsService {
     final apiKey = await getApiKey();
     final language = await _prefs.getString(_languageKey);
     final goal = await _prefs.getInt(_kcalGoalKey);
+    final burn = await _prefs.getInt(_kcalBurnKey);
     return AppSettings(
       hasApiKey: apiKey != null && apiKey.isNotEmpty,
       language: language ?? defaultLanguage,
       dailyKcalGoal: goal ?? defaultKcalGoal,
+      dailyBurnKcal: burn ?? defaultKcalBurn,
     );
   }
 
@@ -70,4 +82,6 @@ class SettingsService {
       _prefs.setString(_languageKey, language);
 
   Future<void> setDailyKcalGoal(int goal) => _prefs.setInt(_kcalGoalKey, goal);
+
+  Future<void> setDailyBurnKcal(int burn) => _prefs.setInt(_kcalBurnKey, burn);
 }

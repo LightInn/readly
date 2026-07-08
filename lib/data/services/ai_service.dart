@@ -53,17 +53,30 @@ class MealSuggestion {
 
 /// A grocery purchase suggestion produced by the AI.
 class GrocerySuggestion {
-  const GrocerySuggestion({required this.name, required this.reason});
+  const GrocerySuggestion({
+    required this.name,
+    required this.reason,
+    this.quantity,
+    this.priceEur,
+  });
 
   factory GrocerySuggestion.fromJson(Map<String, dynamic> json) {
     return GrocerySuggestion(
       name: json['name'] as String,
       reason: json['reason'] as String,
+      quantity: json['quantity'] as String?,
+      priceEur: (json['price_eur'] as num?)?.toDouble(),
     );
   }
 
   final String name;
   final String reason;
+
+  /// Suggested amount to buy, e.g. "500 g" or "6 pots".
+  final String? quantity;
+
+  /// Rough French-supermarket price estimate.
+  final double? priceEur;
 }
 
 /// Client for the OpenAI Chat Completions API through `dart_openai`.
@@ -76,6 +89,22 @@ class AiService {
 
   /// Cheap, fast router model — plenty for summaries and meal ideas.
   static const model = 'gpt-5-nano';
+
+  /// The owner's profile, injected into the food prompts so suggestions fit
+  /// his actual life. Personal app — hardcoding this is a feature, not a bug.
+  /// Prompts are written in French on purpose: the model's French culinary
+  /// vector space is where the good, realistic food ideas live.
+  static const _userProfile =
+      'Profil du propriétaire : homme de 25 ans, 120 kg, travail de bureau '
+      'sédentaire, en déficit calorique volontaire (~1900 kcal/jour pour une '
+      'dépense estimée à ~2200). Il est déjà descendu à 96 kg puis a repris du '
+      'poids en retombant dans les excès — l\'enjeu est la DURABILITÉ. Accro '
+      'au sucre et aux produits transformés (chips au vinaigre, fromage, '
+      'barres chocolatées, plats gras). Déteste éplucher, découper et les '
+      'recettes longues. Le midi en semaine, il mange souvent au restaurant '
+      'avec des collègues (poké, curry, bento…). Le soir après le travail, '
+      'gros risque de craquage sur du sucré ou du gras : des dîners '
+      'rassasiants, riches en protéines et pauvres en sucre sont essentiels.';
 
   static OpenAIChatCompletionChoiceMessageModel _message(
     OpenAIChatMessageRole role,
@@ -136,26 +165,29 @@ class AiService {
   }) async {
     final result = await _structuredRequest(
       system:
-          'You are a pragmatic home-cooking assistant for a lazy person who is '
-          'addicted to sugar and quick meals, and wants to eat healthier with '
-          'minimal effort. Suggest simple, realistic meals that mostly use '
-          'what is already in the kitchen, in quantities that respect what is '
-          'actually left. Give priority to perishable ingredients so nothing '
-          'goes to waste. Balance the rest of the day nutritionally against '
-          'what was already eaten (e.g. lighter and more vegetables after a '
-          'heavy or sugary day). Prefer few steps and short cooking times. '
-          'Answer in $language, as JSON.',
+          'Tu es un assistant de cuisine pragmatique, ancré dans la culture '
+          'gastronomique française : simple, bon, réaliste. $_userProfile\n'
+          'Propose des plats qui utilisent en priorité ce qui est déjà dans '
+          'la cuisine, en respectant les quantités réellement restantes. '
+          'Donne la priorité aux ingrédients périssables pour éviter le '
+          'gaspillage. Équilibre le reste de la journée par rapport à ce qui '
+          'a déjà été mangé (plus léger et plus de légumes après une journée '
+          'chargée ou sucrée). Très peu d\'étapes, temps courts, protéines '
+          'rassasiantes, peu de sucre. Réponds en $language, au format JSON.',
       userContent:
-          'Here is my kitchen inventory as JSON (amount_left_percent or '
-          'units_left say how much of each package remains; perishable items '
-          'should be used first):\n${jsonEncode(pantry)}\n\n'
-          'What I already ate today (${consumedKcal.round()} kcal consumed of '
-          'my ${dailyGoalKcal.round()} kcal daily goal):\n'
-          '${eatenToday.isEmpty ? 'nothing yet' : jsonEncode(eatenToday)}\n\n'
-          'I have about ${remainingKcal.round()} kcal left for today. '
-          'Suggest exactly 3 healthy, low-effort meals I can make right now. '
-          'Only list an ingredient in missing_ingredients if I truly need to '
-          'buy it (assume I have water, salt, pepper and basic oil).',
+          'Voici l\'inventaire de ma cuisine en JSON (amount_left_percent ou '
+          'units_left indiquent ce qui reste de chaque paquet ; '
+          'perishable = à consommer en priorité) :\n${jsonEncode(pantry)}\n\n'
+          'Ce que j\'ai déjà mangé aujourd\'hui '
+          '(${consumedKcal.round()} kcal consommées sur un objectif de '
+          '${dailyGoalKcal.round()} kcal) :\n'
+          '${eatenToday.isEmpty ? 'rien pour l\'instant' : jsonEncode(eatenToday)}\n\n'
+          'Il est ${DateTime.now().hour} h et il me reste environ '
+          '${remainingKcal.round()} kcal pour aujourd\'hui. Propose exactement '
+          '3 repas sains et sans effort, adaptés à ce moment de la journée, '
+          'que je peux faire maintenant. Ne mets un ingrédient dans '
+          'missing_ingredients que si je dois vraiment l\'acheter (je possède '
+          'eau, sel, poivre et huile de base).',
       schemaName: 'meal_suggestions',
       schema: {
         'type': 'object',
@@ -214,16 +246,21 @@ class AiService {
   }) async {
     final result = await _structuredRequest(
       system:
-          'You are a grocery-planning assistant for a lazy person trying to '
-          'eat healthier. Suggest practical items to buy so that healthy, '
-          'low-effort meals are always possible. Favor staples and fresh '
-          'items that complement what they own. Answer in $language, as JSON.',
+          'Tu es un assistant de courses ancré dans la culture gastronomique '
+          'française. $_userProfile\n'
+          'Suggère des achats pratiques pour que des repas sains et sans '
+          'effort soient toujours possibles : des basiques qui se gardent, du '
+          'frais facile à utiliser sans préparation, et des alternatives '
+          'moins sucrées / moins grasses à ses envies habituelles. Réponds '
+          'en $language, au format JSON.',
       userContent:
-          'Kitchen inventory:\n${jsonEncode(pantry)}\n\n'
-          'Recently eaten: ${jsonEncode(recentlyEaten)}\n'
-          'Already on my shopping list: ${jsonEncode(alreadyOnList)}\n\n'
-          'Suggest up to 8 items I should buy (do not repeat items already on '
-          'the list), each with a very short reason.',
+          'Inventaire de la cuisine :\n${jsonEncode(pantry)}\n\n'
+          'Mangé récemment : ${jsonEncode(recentlyEaten)}\n'
+          'Déjà sur ma liste de courses : ${jsonEncode(alreadyOnList)}\n\n'
+          'Suggère jusqu\'à 8 articles à acheter (sans répéter ceux déjà sur '
+          'la liste), chacun avec : une raison très courte, la quantité '
+          'conseillée (ex "500 g", "6 pots") et un prix estimé en euros dans '
+          'un supermarché français (approximation grossière acceptée).',
       schemaName: 'grocery_suggestions',
       schema: {
         'type': 'object',
@@ -235,8 +272,10 @@ class AiService {
               'properties': {
                 'name': {'type': 'string'},
                 'reason': {'type': 'string'},
+                'quantity': {'type': 'string'},
+                'price_eur': {'type': 'number'},
               },
-              'required': ['name', 'reason'],
+              'required': ['name', 'reason', 'quantity', 'price_eur'],
               'additionalProperties': false,
             },
           },

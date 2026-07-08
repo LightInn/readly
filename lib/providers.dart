@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/db/database.dart';
+import 'data/progress.dart';
 import 'data/quantity.dart';
 import 'data/services/ai_service.dart';
 import 'data/services/article_extractor.dart';
@@ -54,6 +55,11 @@ class SettingsNotifier extends AsyncNotifier<AppSettings> {
     await ref.read(settingsServiceProvider).setDailyKcalGoal(goal);
     state = AsyncData(state.requireValue.copyWith(dailyKcalGoal: goal));
   }
+
+  Future<void> setDailyBurnKcal(int burn) async {
+    await ref.read(settingsServiceProvider).setDailyBurnKcal(burn);
+    state = AsyncData(state.requireValue.copyWith(dailyBurnKcal: burn));
+  }
 }
 
 final settingsProvider = AsyncNotifierProvider<SettingsNotifier, AppSettings>(
@@ -81,6 +87,73 @@ final todayEntriesProvider = StreamProvider<List<ConsumptionEntry>>((ref) {
   final end = start.add(const Duration(days: 1));
   return ref.watch(databaseProvider).watchEntriesBetween(start, end);
 });
+
+/// The day the Track page is looking at (midnight-keyed; today by default).
+class SelectedDayNotifier extends Notifier<DateTime> {
+  @override
+  DateTime build() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+}
+
+final selectedDayProvider = NotifierProvider<SelectedDayNotifier, DateTime>(
+  SelectedDayNotifier.new,
+);
+
+/*
+final selectedDayProvider = StateProvider<DateTime>((ref) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+});
+*/
+
+/// Consumption entries of the selected Track day.
+final selectedDayEntriesProvider = StreamProvider<List<ConsumptionEntry>>((
+  ref,
+) {
+  final day = ref.watch(selectedDayProvider);
+  return ref
+      .watch(databaseProvider)
+      .watchEntriesBetween(day, day.add(const Duration(days: 1)));
+});
+
+/// Streak ("days without cheat") and cumulative kcal deficit → kg lost.
+final progressStatsProvider = StreamProvider<ProgressStats>((ref) {
+  final settings = ref.watch(settingsProvider).value;
+  final goal = settings?.dailyKcalGoal ?? SettingsService.defaultKcalGoal;
+  final burn = settings?.dailyBurnKcal ?? SettingsService.defaultKcalBurn;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  return ref
+      .watch(databaseProvider)
+      .watchEntriesBetween(
+        today.subtract(const Duration(days: 366)),
+        today.add(const Duration(days: 1)),
+      )
+      .map((entries) {
+        final byDay = <DateTime, double>{};
+        for (final entry in entries) {
+          final day = DateTime(
+            entry.loggedAt.year,
+            entry.loggedAt.month,
+            entry.loggedAt.day,
+          );
+          byDay[day] = (byDay[day] ?? 0) + entry.kcal;
+        }
+        return computeProgress(
+          kcalByDay: byDay,
+          goalKcal: goal,
+          burnKcal: burn,
+          today: now,
+        );
+      });
+});
+
+/// Meals the user actually cooked, newest first.
+final cookedMealsProvider = StreamProvider<List<CookedMeal>>(
+  (ref) => ref.watch(databaseProvider).watchCookedMeals(),
+);
 
 final shoppingProvider = StreamProvider<List<ShoppingItem>>(
   (ref) => ref.watch(databaseProvider).watchShopping(),

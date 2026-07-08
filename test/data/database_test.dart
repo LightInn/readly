@@ -102,6 +102,32 @@ void main() {
     expect(items.map((i) => i.name), ['Eggs']);
   });
 
+  test('cooked meals: newest first, capped by limit', () async {
+    for (var i = 0; i < 3; i++) {
+      await db.addCookedMeal(
+        CookedMealsCompanion.insert(
+          title: 'Meal $i',
+          kcal: 400,
+          cookedAt: Value(DateTime(2026, 7, 1 + i)),
+        ),
+      );
+    }
+    final cooked = await db.watchCookedMeals(limit: 2).first;
+    expect(cooked.map((m) => m.title), ['Meal 2', 'Meal 1']);
+  });
+
+  test('pantry: category defaults to cupboard and round-trips', () async {
+    await db.addPantryItem(PantryItemsCompanion.insert(name: 'Pasta'));
+    await db.addPantryItem(
+      PantryItemsCompanion.insert(
+        name: 'Yogurt',
+        category: const Value('fridge'),
+      ),
+    );
+    final pantry = await db.watchPantry().first;
+    expect(pantry.map((i) => i.category), ['fridge', 'cupboard']);
+  });
+
   test('saved meals: replaced wholesale, done flag persists', () async {
     SavedMealsCompanion meal(String title) => SavedMealsCompanion.insert(
       title: title,

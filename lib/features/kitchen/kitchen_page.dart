@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/db/database.dart';
+import '../../data/kitchen_category.dart';
 import '../../data/quantity.dart';
 import '../../data/services/off_service.dart';
 import '../../providers.dart';
@@ -143,14 +144,7 @@ class _KitchenPageState extends ConsumerState<KitchenPage> {
                           message:
                               'No item matches the current search or filters.',
                         )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                          itemCount: visible.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, index) =>
-                              _PantryCard(item: visible[index]),
-                        ),
+                      : _DrawerList(items: visible),
                 ),
               ],
             ),
@@ -221,6 +215,53 @@ class _KitchenPageState extends ConsumerState<KitchenPage> {
     messenger.hideCurrentSnackBar();
     if (!context.mounted) return;
     await showPantryEditSheet(context, ref, product: product, barcode: code);
+  }
+}
+
+/// The pantry organized into collapsible "drawers" (fridge, cupboard…).
+class _DrawerList extends StatelessWidget {
+  const _DrawerList({required this.items});
+
+  final List<PantryItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final grouped = <KitchenCategory, List<PantryItem>>{};
+    for (final item in items) {
+      grouped
+          .putIfAbsent(KitchenCategory.fromValue(item.category), () => [])
+          .add(item);
+    }
+    final scheme = Theme.of(context).colorScheme;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+      children: [
+        for (final category in KitchenCategory.values)
+          if (grouped[category] case final drawer?)
+            ExpansionTile(
+              initiallyExpanded: true,
+              maintainState: true,
+              shape: const Border(),
+              collapsedShape: const Border(),
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: Icon(category.icon, color: scheme.primary),
+              title: Text(
+                '${category.label} · ${drawer.length}',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              children: [
+                for (final item in drawer)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _PantryCard(item: item),
+                  ),
+              ],
+            ),
+      ],
+    );
   }
 }
 
@@ -454,6 +495,7 @@ class _PantryCardState extends ConsumerState<_PantryCard> {
                   packageQuantity: Value(item.packageQuantity),
                   unitCount: Value(item.unitCount),
                   perishable: Value(item.perishable),
+                  category: Value(item.category),
                   amountLeft: Value(item.amountLeft),
                   addedAt: Value(item.addedAt),
                 ),
@@ -546,12 +588,16 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
   late final TextEditingController _package;
   late final TextEditingController _units;
   late bool _perishable;
+  late KitchenCategory _category;
+  bool _categoryTouched = false;
 
   @override
   void initState() {
     super.initState();
     final p = widget.product;
     final e = widget.existing;
+    _category = KitchenCategory.fromValue(e?.category ?? 'cupboard');
+    _categoryTouched = e != null;
     _name = TextEditingController(
       text: e?.name ?? p?.name ?? widget.initialName ?? '',
     );
@@ -596,6 +642,7 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
           packageQuantity: Value(package.isEmpty ? null : package),
           unitCount: Value((units ?? 0) > 0 ? units : null),
           perishable: Value(_perishable),
+          category: Value(_category.value),
         ),
       );
     } else {
@@ -613,6 +660,7 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
           packageQuantity: Value(package.isEmpty ? null : package),
           unitCount: Value((units ?? 0) > 0 ? units : null),
           perishable: Value(_perishable),
+          category: Value(_category.value),
         ),
       );
     }
@@ -673,13 +721,43 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
               helperText: 'When set, quantities are tracked in units, not %',
             ),
           ),
+          DropdownMenu<KitchenCategory>(
+            key: ValueKey(_category),
+            initialSelection: _category,
+            label: const Text('Drawer'),
+            expandedInsets: EdgeInsets.zero,
+            dropdownMenuEntries: [
+              for (final category in KitchenCategory.values)
+                DropdownMenuEntry(
+                  value: category,
+                  label: category.label,
+                  leadingIcon: Icon(category.icon, size: 20),
+                ),
+            ],
+            onSelected: (value) {
+              if (value == null) return;
+              setState(() {
+                _category = value;
+                _categoryTouched = true;
+              });
+            },
+          ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Perishable'),
             subtitle: const Text('Fresh food that should be eaten first'),
             secondary: const Icon(Icons.eco, color: Color(0xFFE8930C)),
             value: _perishable,
-            onChanged: (v) => setState(() => _perishable = v),
+            onChanged: (v) => setState(() {
+              _perishable = v;
+              // Perishable food obviously lives in the fridge — until the
+              // user says otherwise.
+              if (!_categoryTouched) {
+                _category = v
+                    ? KitchenCategory.fridge
+                    : KitchenCategory.cupboard;
+              }
+            }),
           ),
           const SizedBox(height: 8),
           FilledButton.icon(
