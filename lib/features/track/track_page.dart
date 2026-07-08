@@ -40,6 +40,7 @@ class TrackPage extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
         children: [
           _KcalHeader(consumed: consumed, goal: goal),
+          const _EatSoonCard(),
           if (entries.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 48),
@@ -92,8 +93,29 @@ class TrackPage extends ConsumerWidget {
                   color: Theme.of(context).colorScheme.errorContainer,
                   child: const Icon(Icons.delete_outline),
                 ),
-                onDismissed: (_) =>
-                    ref.read(databaseProvider).deleteConsumption(entry.id),
+                onDismissed: (_) async {
+                  final db = ref.read(databaseProvider);
+                  final messenger = ScaffoldMessenger.of(context);
+                  await db.deleteConsumption(entry.id);
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Removed "${entry.name}".'),
+                      action: SnackBarAction(
+                        label: 'Undo',
+                        onPressed: () => db.logConsumption(
+                          ConsumptionEntriesCompanion.insert(
+                            name: entry.name,
+                            kcal: entry.kcal,
+                            mealType: entry.mealType,
+                            pantryItemId: Value(entry.pantryItemId),
+                            grams: Value(entry.grams),
+                            loggedAt: Value(entry.loggedAt),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
                 child: ListTile(
                   leading: CircleAvatar(
                     radius: 18,
@@ -272,6 +294,63 @@ class TrackPage extends ConsumerWidget {
             mealType: result.$3.value,
           ),
         );
+  }
+}
+
+/// Perishable items that are not finished yet — eat these first.
+/// Hidden when there is nothing perishable in the kitchen.
+class _EatSoonCard extends ConsumerWidget {
+  const _EatSoonCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pantry = ref.watch(pantryProvider).value ?? [];
+    final perishables = [
+      for (final item in pantry)
+        if (item.perishable && !item.isConsumed) item,
+    ];
+    if (perishables.isEmpty) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Card(
+        color: scheme.secondaryContainer,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.eco, size: 18, color: Color(0xFFE8930C)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Eat these first',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: scheme.onSecondaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final item in perishables.take(6))
+                    ActionChip(
+                      avatar: const Icon(Icons.restaurant, size: 16),
+                      label: Text('${item.name} · ${item.amountLabel}'),
+                      onPressed: () => eatPantryItemFlow(context, ref, item),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
