@@ -1,16 +1,35 @@
-# readly
+# Readly
 
-A new Flutter project.
+Personal Android app: **kcal tracker + AI meal maker**, with article summarization as a side feature. Built for one user — no accounts, no backend, everything on-device.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- **Track** — daily kcal ring vs. your goal. Log by barcode scan (Open Food Facts), from your pantry, or quick-add.
+- **Kitchen** — scan what you have at home; estimate how much is left in each package with a slider.
+- **Meals** — Claude suggests 3 healthy, low-effort meals from what you actually own and your remaining kcal. Missing ingredients go to the grocery list in one tap.
+- **Groceries** — checklist with AI purchase propositions based on your pantry and eating habits.
+- **Read** — share any web page to Readly (or paste a URL) and get a streamed summary.
 
-A few resources to get you started if this is your first Flutter project:
+## Stack
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Flutter (Material 3) · Riverpod · go_router · drift (SQLite) · mobile_scanner · Open Food Facts API v2 · Anthropic Messages API (`claude-opus-4-8`, bring your own key).
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Setup
+
+```sh
+flutter pub get
+dart run build_runner build   # drift codegen (after schema changes)
+flutter run
+```
+
+Then add your Anthropic API key in the app's settings to enable the AI features.
+
+## Checks
+
+```sh
+dart format lib test
+flutter analyze
+flutter test
+```
+
+See `PLAN.md` for the overhaul plan and remaining ideas.
