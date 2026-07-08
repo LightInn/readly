@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/db/database.dart';
+import 'data/quantity.dart';
 import 'data/services/ai_service.dart';
 import 'data/services/article_extractor.dart';
 import 'data/services/off_service.dart';
@@ -34,7 +35,9 @@ class SettingsNotifier extends AsyncNotifier<AppSettings> {
 
   Future<void> setApiKey(String? key) async {
     await ref.read(settingsServiceProvider).setApiKey(key);
-    ref.invalidate(aiServiceProvider);
+    // No explicit invalidate: aiServiceProvider watches this provider, so
+    // publishing the new state below rebuilds it (invalidating from inside
+    // the watched notifier trips riverpod's circular-dependency check).
     state = await AsyncValue.guard(
       () => ref.read(settingsServiceProvider).load(),
     );
@@ -113,15 +116,31 @@ class MealSuggestionsNotifier
       () => ai.suggestMeals(
         pantry: [
           for (final item in pantry)
+            if (!item.isConsumed)
+              {
+                'name': item.name,
+                if (item.brand != null) 'brand': item.brand,
+                if (item.isUnitBased) ...{
+                  'units_left': item.unitsLeft,
+                  'units_per_package': item.unitCount,
+                } else
+                  'amount_left_percent': (item.amountLeft * 100).round(),
+                'perishable': item.perishable,
+                if (item.kcalPer100g != null) 'kcal_per_100g': item.kcalPer100g,
+                if (item.packageQuantity != null)
+                  'package_size': item.packageQuantity,
+              },
+        ],
+        eatenToday: [
+          for (final entry in entries)
             {
-              'name': item.name,
-              if (item.brand != null) 'brand': item.brand,
-              'amount_left_percent': (item.amountLeft * 100).round(),
-              if (item.kcalPer100g != null) 'kcal_per_100g': item.kcalPer100g,
-              if (item.packageQuantity != null)
-                'package_size': item.packageQuantity,
+              'name': entry.name,
+              'kcal': entry.kcal.round(),
+              'meal': entry.mealType,
             },
         ],
+        consumedKcal: eaten,
+        dailyGoalKcal: settings.dailyKcalGoal.toDouble(),
         remainingKcal: remaining.clamp(300, 4000).toDouble(),
         language: settings.language,
       ),

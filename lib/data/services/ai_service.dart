@@ -123,10 +123,14 @@ class AiService {
         .handleError((Object e) => throw _wrap(e));
   }
 
-  /// Asks for meal suggestions based on what is in the kitchen.
+  /// Asks for meal suggestions based on what is in the kitchen, how much of
+  /// it remains, and what was already eaten today.
   /// Uses structured outputs so the response is guaranteed valid JSON.
   Future<List<MealSuggestion>> suggestMeals({
     required List<Map<String, Object?>> pantry,
+    required List<Map<String, Object?>> eatenToday,
+    required double consumedKcal,
+    required double dailyGoalKcal,
     required double remainingKcal,
     required String language,
   }) async {
@@ -135,11 +139,19 @@ class AiService {
           'You are a pragmatic home-cooking assistant for a lazy person who is '
           'addicted to sugar and quick meals, and wants to eat healthier with '
           'minimal effort. Suggest simple, realistic meals that mostly use '
-          'what is already in the kitchen. Prefer few steps and short cooking '
-          'times. Answer in $language, as JSON.',
+          'what is already in the kitchen, in quantities that respect what is '
+          'actually left. Give priority to perishable ingredients so nothing '
+          'goes to waste. Balance the rest of the day nutritionally against '
+          'what was already eaten (e.g. lighter and more vegetables after a '
+          'heavy or sugary day). Prefer few steps and short cooking times. '
+          'Answer in $language, as JSON.',
       userContent:
-          'Here is my kitchen inventory as JSON (amount_left_percent is how '
-          'much of the package remains):\n${jsonEncode(pantry)}\n\n'
+          'Here is my kitchen inventory as JSON (amount_left_percent or '
+          'units_left say how much of each package remains; perishable items '
+          'should be used first):\n${jsonEncode(pantry)}\n\n'
+          'What I already ate today (${consumedKcal.round()} kcal consumed of '
+          'my ${dailyGoalKcal.round()} kcal daily goal):\n'
+          '${eatenToday.isEmpty ? 'nothing yet' : jsonEncode(eatenToday)}\n\n'
           'I have about ${remainingKcal.round()} kcal left for today. '
           'Suggest exactly 3 healthy, low-effort meals I can make right now. '
           'Only list an ingredient in missing_ingredients if I truly need to '
