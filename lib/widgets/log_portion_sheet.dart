@@ -1,8 +1,11 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/db/database.dart';
 import '../data/meal_type.dart';
 import '../data/quantity.dart';
+import '../providers.dart';
 
 class LogPortionResult {
   const LogPortionResult({
@@ -271,4 +274,39 @@ Future<LogPortionResult?> showEatPantryItemSheet(
     amountLeft: item.amountLeft,
     packageLabel: item.packageQuantity,
   );
+}
+
+/// The full "I ate some of this" flow shared by Kitchen and Track: portion
+/// sheet → log the kcal → keep the pantry stock in sync. Returns true when
+/// something was logged.
+Future<bool> eatPantryItemFlow(
+  BuildContext context,
+  WidgetRef ref,
+  PantryItem item,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final result = await showEatPantryItemSheet(context, item);
+  if (result == null) return false;
+  final db = ref.read(databaseProvider);
+  await db.logConsumption(
+    ConsumptionEntriesCompanion.insert(
+      name: item.name,
+      kcal: result.kcal,
+      mealType: result.mealType.value,
+      pantryItemId: Value(item.id),
+      grams: Value(result.grams),
+    ),
+  );
+  await db.updatePantryItem(
+    item.id,
+    PantryItemsCompanion(
+      amountLeft: Value((item.amountLeft - result.fraction).clamp(0.0, 1.0)),
+    ),
+  );
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text('Logged ${result.kcal.round()} kcal — stock updated.'),
+    ),
+  );
+  return true;
 }

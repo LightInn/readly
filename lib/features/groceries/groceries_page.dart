@@ -7,6 +7,7 @@ import '../../data/db/database.dart';
 import '../../data/services/ai_service.dart';
 import '../../providers.dart';
 import '../../widgets/common.dart';
+import '../kitchen/kitchen_page.dart' show showPantryEditSheet;
 
 class GroceriesPage extends ConsumerStatefulWidget {
   const GroceriesPage({super.key});
@@ -108,6 +109,77 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
     }
   }
 
+  Future<void> _deleteWithUndo(ShoppingItem item) async {
+    final db = ref.read(databaseProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    await db.deleteShoppingItem(item.id);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Removed "${item.name}".'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => db.addShoppingItem(
+            ShoppingItemsCompanion.insert(
+              name: item.name,
+              note: Value(item.note),
+              done: Value(item.done),
+              source: Value(item.source),
+              addedAt: Value(item.addedAt),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Checking something off means it was bought — offer to put it in the
+  /// kitchen (refill if it already exists there, otherwise quick-add).
+  Future<void> _setDone(ShoppingItem item, bool done) async {
+    final db = ref.read(databaseProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    await db.setShoppingDone(item.id, done);
+    if (!done) return;
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Bought "${item.name}"!'),
+        action: SnackBarAction(
+          label: 'To kitchen',
+          onPressed: () => _addBoughtToKitchen(item.name),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addBoughtToKitchen(String name) async {
+    final db = ref.read(databaseProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final pantry = await ref.read(pantryProvider.future);
+    final query = name.trim().toLowerCase();
+    PantryItem? match;
+    for (final item in pantry) {
+      final itemName = item.name.toLowerCase();
+      if (itemName == query ||
+          itemName.contains(query) ||
+          query.contains(itemName)) {
+        match = item;
+        break;
+      }
+    }
+    if (match != null) {
+      await db.updatePantryItem(
+        match.id,
+        const PantryItemsCompanion(amountLeft: Value(1.0)),
+      );
+      messenger.showSnackBar(
+        SnackBar(content: Text('"${match.name}" refilled to 100%.')),
+      );
+      return;
+    }
+    if (!mounted) return;
+    await showPantryEditSheet(context, ref, initialName: name.trim());
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = ref.watch(shoppingProvider).value ?? [];
@@ -181,14 +253,10 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
                           color: Theme.of(context).colorScheme.errorContainer,
                           child: const Icon(Icons.delete_outline),
                         ),
-                        onDismissed: (_) => ref
-                            .read(databaseProvider)
-                            .deleteShoppingItem(item.id),
+                        onDismissed: (_) => _deleteWithUndo(item),
                         child: CheckboxListTile(
                           value: item.done,
-                          onChanged: (value) => ref
-                              .read(databaseProvider)
-                              .setShoppingDone(item.id, value ?? false),
+                          onChanged: (value) => _setDone(item, value ?? false),
                           title: Text(
                             item.name,
                             style: item.done

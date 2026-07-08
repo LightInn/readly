@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 /// Full screen barcode scanner. Pops with the scanned code as a [String].
+/// A keyboard fallback at the bottom covers damaged/unreadable barcodes.
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});
 
@@ -14,6 +15,7 @@ class _ScannerPageState extends State<ScannerPage> {
   final _controller = MobileScannerController(
     formats: [BarcodeFormat.ean13, BarcodeFormat.ean8, BarcodeFormat.upcA],
   );
+  final _manualController = TextEditingController();
   bool _handled = false;
 
   void _onDetect(BarcodeCapture capture) {
@@ -27,9 +29,17 @@ class _ScannerPageState extends State<ScannerPage> {
     context.pop(code);
   }
 
+  void _submitManual() {
+    final code = _manualController.text.replaceAll(RegExp(r'\D'), '');
+    if (code.length < 8 || _handled) return;
+    _handled = true;
+    context.pop(code);
+  }
+
   @override
   void dispose() {
     _controller.dispose();
+    _manualController.dispose();
     super.dispose();
   }
 
@@ -37,6 +47,7 @@ class _ScannerPageState extends State<ScannerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
@@ -65,6 +76,33 @@ class _ScannerPageState extends State<ScannerPage> {
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.white70, width: 3),
                 borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                child: TextField(
+                  controller: _manualController,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: '…or type the barcode',
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.white12,
+                    suffixIcon: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white70,
+                      ),
+                      onPressed: _submitManual,
+                    ),
+                  ),
+                  onSubmitted: (_) => _submitManual(),
+                ),
               ),
             ),
           ),

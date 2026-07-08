@@ -408,34 +408,7 @@ class _PantryCardState extends ConsumerState<_PantryCard> {
     return '${(amount * 100).round()}%';
   }
 
-  Future<void> _eatSome() async {
-    final item = widget.item;
-    final result = await showEatPantryItemSheet(context, item);
-    if (result == null) return;
-    final db = ref.read(databaseProvider);
-    await db.logConsumption(
-      ConsumptionEntriesCompanion.insert(
-        name: item.name,
-        kcal: result.kcal,
-        mealType: result.mealType.value,
-        pantryItemId: Value(item.id),
-        grams: Value(result.grams),
-      ),
-    );
-    await db.updatePantryItem(
-      item.id,
-      PantryItemsCompanion(
-        amountLeft: Value((item.amountLeft - result.fraction).clamp(0.0, 1.0)),
-      ),
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Logged ${result.kcal.round()} kcal — stock updated.'),
-        ),
-      );
-    }
-  }
+  Future<void> _eatSome() => eatPantryItemFlow(context, ref, widget.item);
 
   Future<void> _addToGroceries() async {
     await ref
@@ -459,7 +432,35 @@ class _PantryCardState extends ConsumerState<_PantryCard> {
           const PantryItemsCompanion(amountLeft: Value(1.0)),
         );
       case 'delete':
-        await db.deletePantryItem(widget.item.id);
+        final item = widget.item;
+        final messenger = ScaffoldMessenger.of(context);
+        await db.deletePantryItem(item.id);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Deleted "${item.name}".'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () => db.addPantryItem(
+                PantryItemsCompanion.insert(
+                  name: item.name,
+                  barcode: Value(item.barcode),
+                  brand: Value(item.brand),
+                  imageUrl: Value(item.imageUrl),
+                  kcalPer100g: Value(item.kcalPer100g),
+                  proteinsPer100g: Value(item.proteinsPer100g),
+                  carbsPer100g: Value(item.carbsPer100g),
+                  sugarsPer100g: Value(item.sugarsPer100g),
+                  fatsPer100g: Value(item.fatsPer100g),
+                  packageQuantity: Value(item.packageQuantity),
+                  unitCount: Value(item.unitCount),
+                  perishable: Value(item.perishable),
+                  amountLeft: Value(item.amountLeft),
+                  addedAt: Value(item.addedAt),
+                ),
+              ),
+            ),
+          ),
+        );
     }
   }
 }
@@ -498,14 +499,16 @@ class _Thumbnail extends StatelessWidget {
   }
 }
 
-/// Add/edit sheet, optionally pre-filled from an Open Food Facts [product]
-/// or an [existing] pantry item.
+/// Add/edit sheet, optionally pre-filled from an Open Food Facts [product],
+/// an [existing] pantry item, or just an [initialName] (e.g. coming from a
+/// checked-off grocery).
 Future<void> showPantryEditSheet(
   BuildContext context,
   WidgetRef ref, {
   OffProduct? product,
   PantryItem? existing,
   String? barcode,
+  String? initialName,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -514,16 +517,23 @@ Future<void> showPantryEditSheet(
       product: product,
       existing: existing,
       barcode: barcode,
+      initialName: initialName,
     ),
   );
 }
 
 class _PantryEditSheet extends ConsumerStatefulWidget {
-  const _PantryEditSheet({this.product, this.existing, this.barcode});
+  const _PantryEditSheet({
+    this.product,
+    this.existing,
+    this.barcode,
+    this.initialName,
+  });
 
   final OffProduct? product;
   final PantryItem? existing;
   final String? barcode;
+  final String? initialName;
 
   @override
   ConsumerState<_PantryEditSheet> createState() => _PantryEditSheetState();
@@ -542,7 +552,9 @@ class _PantryEditSheetState extends ConsumerState<_PantryEditSheet> {
     super.initState();
     final p = widget.product;
     final e = widget.existing;
-    _name = TextEditingController(text: e?.name ?? p?.name ?? '');
+    _name = TextEditingController(
+      text: e?.name ?? p?.name ?? widget.initialName ?? '',
+    );
     _brand = TextEditingController(text: e?.brand ?? p?.brand ?? '');
     _kcal = TextEditingController(
       text: (e?.kcalPer100g ?? p?.kcalPer100g)?.round().toString() ?? '',
