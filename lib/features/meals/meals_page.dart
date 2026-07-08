@@ -48,10 +48,7 @@ class MealsPage extends ConsumerWidget {
           ),
         ),
         // Idle or done: the saved batch (persisted across restarts) rules.
-        _ =>
-          meals.isEmpty
-              ? _Idle(hasApiKey: hasApiKey)
-              : _SuggestionList(meals: meals),
+        _ => _MealsBody(meals: meals, hasApiKey: hasApiKey),
       },
     );
   }
@@ -116,29 +113,125 @@ class _Loading extends StatelessWidget {
   }
 }
 
-class _SuggestionList extends ConsumerWidget {
-  const _SuggestionList({required this.meals});
+/// Suggestions (or the idle pitch) followed by the cook history.
+class _MealsBody extends ConsumerWidget {
+  const _MealsBody({required this.meals, required this.hasApiKey});
 
   final List<SavedMeal> meals;
+  final bool hasApiKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cooked = ref.watch(cookedMealsProvider).value ?? [];
+    if (meals.isEmpty && cooked.isEmpty) return _Idle(hasApiKey: hasApiKey);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        for (final meal in meals) ...[
-          _MealCard(meal: meal),
-          const SizedBox(height: 12),
+        if (meals.isEmpty)
+          _Idle(hasApiKey: hasApiKey)
+        else ...[
+          for (final meal in meals) ...[
+            _MealCard(meal: meal),
+            const SizedBox(height: 12),
+          ],
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.refresh),
+            label: const Text('Suggest something else'),
+            onPressed: () =>
+                ref.read(mealSuggestionsProvider.notifier).generate(),
+          ),
         ],
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.refresh),
-          label: const Text('Suggest something else'),
-          onPressed: () =>
-              ref.read(mealSuggestionsProvider.notifier).generate(),
-        ),
+        if (cooked.isNotEmpty) ...[
+          const SectionHeader('Cooked before'),
+          Card(
+            child: Column(
+              children: [
+                for (final meal in cooked)
+                  ListTile(
+                    leading: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.tertiaryContainer,
+                      child: Icon(
+                        Icons.restaurant_menu,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.onTertiaryContainer,
+                      ),
+                    ),
+                    title: Text(meal.title),
+                    subtitle: Text(
+                      '${_agoLabel(meal.cookedAt)} · ${meal.kcal.round()} kcal',
+                    ),
+                    trailing: IconButton(
+                      tooltip: 'I made it again',
+                      icon: const Icon(Icons.replay),
+                      onPressed: () => _relogCooked(context, ref, meal),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  static String _agoLabel(DateTime date) {
+    final days = DateTime.now().difference(date).inDays;
+    if (days <= 0) return 'today';
+    if (days == 1) return 'yesterday';
+    if (days < 30) return '$days days ago';
+    return '${(days / 30).floor()} month${days >= 60 ? 's' : ''} ago';
+  }
+
+  Future<void> _relogCooked(
+    BuildContext context,
+    WidgetRef ref,
+    CookedMeal meal,
+  ) async {
+    final type = await showModalBottomSheet<MealType>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Log "${meal.title}" (${meal.kcal.round()} kcal) as:',
+                style: Theme.of(sheetContext).textTheme.titleMedium,
+              ),
+            ),
+            for (final type in MealType.values)
+              ListTile(
+                leading: Icon(type.icon, color: type.color),
+                title: Text(type.label),
+                onTap: () => Navigator.pop(sheetContext, type),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (type == null) return;
+    final db = ref.read(databaseProvider);
+    await db.logConsumption(
+      ConsumptionEntriesCompanion.insert(
+        name: meal.title,
+        kcal: meal.kcal,
+        mealType: type.value,
+      ),
+    );
+    await db.addCookedMeal(
+      CookedMealsCompanion.insert(title: meal.title, kcal: meal.kcal),
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logged ${meal.kcal.round()} kcal. Enjoy!')),
+      );
+    }
   }
 }
 
@@ -237,10 +330,36 @@ class _MealCard extends ConsumerWidget {
                 tilePadding: EdgeInsets.zero,
                 shape: const Border(),
                 title: Text(
-                  'Steps',
+                  'Ingredients & steps',
                   style: Theme.of(context).textTheme.labelLarge,
                 ),
                 children: [
+                  // Everything the recipe needs, missing items flagged.
+                  for (final ingredient in usedIngredients)
+                    ListTile(
+                      dense: true,
+                      visualDensity: VisualDensity.compact,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        Icons.check_circle_outline,
+                        size: 20,
+                        color: scheme.primary,
+                      ),
+                      title: Text(ingredient),
+                    ),
+                  for (final ingredient in missingIngredients)
+                    ListTile(
+                      dense: true,
+                      visualDensity: VisualDensity.compact,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        Icons.remove_shopping_cart_outlined,
+                        size: 20,
+                        color: scheme.error,
+                      ),
+                      title: Text('$ingredient (to buy)'),
+                    ),
+                  const Divider(),
                   for (final (index, step) in steps.indexed)
                     ListTile(
                       dense: true,
@@ -334,6 +453,9 @@ class _MealCard extends ConsumerWidget {
       ),
     );
     await db.setSavedMealDone(meal.id);
+    await db.addCookedMeal(
+      CookedMealsCompanion.insert(title: meal.title, kcal: meal.kcal),
+    );
 
     // Cooking used up ingredients: offer to adjust the kitchen quantities.
     if (!context.mounted) return;

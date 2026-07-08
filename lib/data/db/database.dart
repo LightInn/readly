@@ -25,6 +25,9 @@ class PantryItems extends Table {
   /// Perishable foods should be eaten first.
   BoolColumn get perishable => boolean().withDefault(const Constant(false))();
 
+  /// Storage "drawer": fridge | freezer | cupboard | snacks | drinks | other.
+  TextColumn get category => text().withDefault(const Constant('cupboard'))();
+
   /// Estimated fraction left in the package, 0.0 to 1.0.
   RealColumn get amountLeft => real().withDefault(const Constant(1.0))();
   DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
@@ -54,7 +57,21 @@ class ShoppingItems extends Table {
 
   /// manual | ai
   TextColumn get source => text().withDefault(const Constant('manual'))();
+
+  /// AI estimates: how much to buy ("500 g", "6 pots") and a rough price.
+  TextColumn get quantity => text().nullable()();
+  RealColumn get estimatedPrice => real().nullable()();
   DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Every meal the user actually cooked ("I made it"), kept forever so the
+/// Meals tab can offer to cook them again.
+@DataClassName('CookedMeal')
+class CookedMeals extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  RealColumn get kcal => real()();
+  DateTimeColumn get cookedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 /// AI-generated meal suggestions, persisted so they survive app restarts.
@@ -91,6 +108,7 @@ class Articles extends Table {
     ConsumptionEntries,
     ShoppingItems,
     SavedMeals,
+    CookedMeals,
     Articles,
   ],
 )
@@ -100,7 +118,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,6 +129,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await m.createTable(savedMeals);
+      }
+      if (from < 4) {
+        await m.addColumn(pantryItems, pantryItems.category);
+        await m.addColumn(shoppingItems, shoppingItems.quantity);
+        await m.addColumn(shoppingItems, shoppingItems.estimatedPrice);
+        await m.createTable(cookedMeals);
+        // Existing perishables obviously live in the fridge.
+        await (update(pantryItems)..where((t) => t.perishable.equals(true)))
+            .write(const PantryItemsCompanion(category: Value('fridge')));
       }
     },
   );
@@ -158,6 +185,11 @@ class AppDatabase extends _$AppDatabase {
   Future<int> logConsumption(ConsumptionEntriesCompanion entry) =>
       into(consumptionEntries).insert(entry);
 
+  Future<void> updateConsumption(int id, ConsumptionEntriesCompanion changes) =>
+      (update(consumptionEntries)..where((t) => t.id.equals(id))).write(
+        changes,
+      );
+
   Future<void> deleteConsumption(int id) =>
       (delete(consumptionEntries)..where((t) => t.id.equals(id))).go();
 
@@ -202,6 +234,20 @@ class AppDatabase extends _$AppDatabase {
       (update(savedMeals)..where((t) => t.id.equals(id))).write(
         const SavedMealsCompanion(done: Value(true)),
       );
+
+  // ---- Cooked meal history ----
+
+  Stream<List<CookedMeal>> watchCookedMeals({int limit = 15}) =>
+      (select(cookedMeals)
+            ..orderBy([(t) => OrderingTerm.desc(t.cookedAt)])
+            ..limit(limit))
+          .watch();
+
+  Future<int> addCookedMeal(CookedMealsCompanion meal) =>
+      into(cookedMeals).insert(meal);
+
+  Future<void> deleteCookedMeal(int id) =>
+      (delete(cookedMeals)..where((t) => t.id.equals(id))).go();
 
   // ---- Articles ----
 

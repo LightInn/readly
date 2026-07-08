@@ -9,6 +9,7 @@ class _FakeSettingsService extends SettingsService {
   String? apiKey;
   String language = 'english';
   int goal = 2000;
+  int burn = 2200;
 
   @override
   Future<String?> getApiKey() async => apiKey;
@@ -21,6 +22,7 @@ class _FakeSettingsService extends SettingsService {
     hasApiKey: apiKey != null,
     language: language,
     dailyKcalGoal: goal,
+    dailyBurnKcal: burn,
   );
 
   @override
@@ -28,6 +30,9 @@ class _FakeSettingsService extends SettingsService {
 
   @override
   Future<void> setDailyKcalGoal(int value) async => goal = value;
+
+  @override
+  Future<void> setDailyBurnKcal(int value) async => burn = value;
 }
 
 void main() {

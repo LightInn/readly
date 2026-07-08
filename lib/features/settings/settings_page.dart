@@ -15,6 +15,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _apiKeyController = TextEditingController();
   final _goalController = TextEditingController();
+  final _burnController = TextEditingController();
   bool _obscureKey = true;
 
   @override
@@ -23,6 +24,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final settings = ref.read(settingsProvider).value;
     if (settings != null) {
       _goalController.text = settings.dailyKcalGoal.toString();
+      _burnController.text = settings.dailyBurnKcal.toString();
     }
   }
 
@@ -30,6 +32,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void dispose() {
     _apiKeyController.dispose();
     _goalController.dispose();
+    _burnController.dispose();
     super.dispose();
   }
 
@@ -49,6 +52,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final goal = int.tryParse(_goalController.text.trim());
     if (goal == null || goal <= 0) return;
     await ref.read(settingsProvider.notifier).setDailyKcalGoal(goal);
+    if (mounted) FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _saveBurn() async {
+    final burn = int.tryParse(_burnController.text.trim());
+    if (burn == null || burn <= 0) return;
+    await ref.read(settingsProvider.notifier).setDailyBurnKcal(burn);
     if (mounted) FocusScope.of(context).unfocus();
   }
 
@@ -159,6 +169,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     onSubmitted: (_) => _saveGoal(),
                     onTapOutside: (_) => _saveGoal(),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _burnController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Maintenance kcal (daily burn estimate)',
+                      helperText:
+                          'Used for the streak deficit → kg lost estimate '
+                          '(7700 kcal ≈ 1 kg)',
+                    ),
+                    onSubmitted: (_) => _saveBurn(),
+                    onTapOutside: (_) => _saveBurn(),
                   ),
                 ],
               ),

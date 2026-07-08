@@ -278,12 +278,13 @@ Future<LogPortionResult?> showEatPantryItemSheet(
 
 /// The full "I ate some of this" flow shared by Kitchen and Track: portion
 /// sheet → log the kcal → keep the pantry stock in sync. Returns true when
-/// something was logged.
+/// something was logged. [loggedAt] backdates the log (viewing a past day).
 Future<bool> eatPantryItemFlow(
   BuildContext context,
   WidgetRef ref,
-  PantryItem item,
-) async {
+  PantryItem item, {
+  DateTime? loggedAt,
+}) async {
   final messenger = ScaffoldMessenger.of(context);
   final result = await showEatPantryItemSheet(context, item);
   if (result == null) return false;
@@ -295,6 +296,7 @@ Future<bool> eatPantryItemFlow(
       mealType: result.mealType.value,
       pantryItemId: Value(item.id),
       grams: Value(result.grams),
+      loggedAt: loggedAt == null ? const Value.absent() : Value(loggedAt),
     ),
   );
   await db.updatePantryItem(
