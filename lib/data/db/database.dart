@@ -57,6 +57,26 @@ class ShoppingItems extends Table {
   DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+/// AI-generated meal suggestions, persisted so they survive app restarts.
+/// Replaced wholesale on each new generation.
+@DataClassName('SavedMeal')
+class SavedMeals extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  TextColumn get description => text()();
+  IntColumn get timeMinutes => integer()();
+  RealColumn get kcal => real()();
+
+  /// JSON-encoded list of ingredient names.
+  TextColumn get usedIngredients => text()();
+  TextColumn get missingIngredients => text()();
+  TextColumn get steps => text()();
+
+  /// Set once the user tapped "I made it".
+  BoolColumn get done => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 class Articles extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get url => text()();
@@ -66,7 +86,13 @@ class Articles extends Table {
 }
 
 @DriftDatabase(
-  tables: [PantryItems, ConsumptionEntries, ShoppingItems, Articles],
+  tables: [
+    PantryItems,
+    ConsumptionEntries,
+    ShoppingItems,
+    SavedMeals,
+    Articles,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'readly'));
@@ -74,7 +100,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,6 +108,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 2) {
         await m.addColumn(pantryItems, pantryItems.unitCount);
         await m.addColumn(pantryItems, pantryItems.perishable);
+      }
+      if (from < 3) {
+        await m.createTable(savedMeals);
       }
     },
   );
@@ -154,6 +183,25 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> clearDoneShopping() =>
       (delete(shoppingItems)..where((t) => t.done.equals(true))).go();
+
+  // ---- Saved meal suggestions ----
+
+  Stream<List<SavedMeal>> watchSavedMeals() =>
+      (select(savedMeals)..orderBy([(t) => OrderingTerm.asc(t.id)])).watch();
+
+  /// A new generation replaces the previous batch entirely.
+  Future<void> replaceSavedMeals(List<SavedMealsCompanion> meals) =>
+      transaction(() async {
+        await delete(savedMeals).go();
+        for (final meal in meals) {
+          await into(savedMeals).insert(meal);
+        }
+      });
+
+  Future<void> setSavedMealDone(int id) =>
+      (update(savedMeals)..where((t) => t.id.equals(id))).write(
+        const SavedMealsCompanion(done: Value(true)),
+      );
 
   // ---- Articles ----
 

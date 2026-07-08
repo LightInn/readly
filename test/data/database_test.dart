@@ -102,6 +102,33 @@ void main() {
     expect(items.map((i) => i.name), ['Eggs']);
   });
 
+  test('saved meals: replaced wholesale, done flag persists', () async {
+    SavedMealsCompanion meal(String title) => SavedMealsCompanion.insert(
+      title: title,
+      description: 'desc',
+      timeMinutes: 10,
+      kcal: 400,
+      usedIngredients: '["eggs"]',
+      missingIngredients: '[]',
+      steps: '["cook"]',
+    );
+
+    await db.replaceSavedMeals([meal('Omelette'), meal('Salad')]);
+    var meals = await db.watchSavedMeals().first;
+    expect(meals.map((m) => m.title), ['Omelette', 'Salad']);
+    expect(meals.first.done, isFalse);
+
+    await db.setSavedMealDone(meals.first.id);
+    meals = await db.watchSavedMeals().first;
+    expect(meals.first.done, isTrue);
+    expect(meals.last.done, isFalse);
+
+    // A new generation wipes the old batch (and its done flags).
+    await db.replaceSavedMeals([meal('Soup')]);
+    meals = await db.watchSavedMeals().first;
+    expect(meals.map((m) => m.title), ['Soup']);
+  });
+
   test('articles: saved summaries can be fetched back by id', () async {
     final id = await db.saveArticle(
       ArticlesCompanion.insert(
