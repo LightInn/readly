@@ -38,35 +38,35 @@ Transform Readly from a single-purpose "article summarizer" into a personal **kc
 
 ### Phase 0 — Toolchain & hygiene
 - [x] Audit existing code (1 200 lines, 11 files) and Android config
-- [ ] Rewrite `pubspec.yaml`: drop `chat_gpt_sdk`, `animated_image_list`; add riverpod, go_router, drift(+dev,build_runner), mobile_scanner, google_fonts; bump SDK to `^3.12.0`, version `3.0.0`
-- [ ] Stricter `analysis_options.yaml` (flutter_lints 6 + extra rules)
-- [ ] Android: add `CAMERA` permission, verify minSdk/compileSdk for mobile_scanner
-- [ ] CI: analyze + test + release-build APK, current Flutter, drop `dart format` misuse
+- [x] Rewrite `pubspec.yaml`: drop `chat_gpt_sdk`, `animated_image_list`; add riverpod, go_router, drift(+dev,build_runner), mobile_scanner, google_fonts; bump SDK to `^3.12.0`, version `3.0.0`
+- [x] Stricter `analysis_options.yaml` (flutter_lints 6 + extra rules)
+- [x] Android: add `CAMERA` permission, drop deprecated manifest `package` attr, Java 11
+- [x] CI: format + analyze + test + build APK, current Flutter, drop `dart format` misuse
 
 ### Phase 1 — Core plumbing
-- [ ] Theme (Material 3, light+dark, rounded shapes, google_fonts)
-- [ ] Router (5-branch StatefulShellRoute + /settings + /scan)
-- [ ] Drift database + DAOs + codegen
-- [ ] SettingsService (API key secure, goal/language prefs)
-- [ ] AnthropicService: SSE streaming (`summarize`) + structured-output (`suggestMeals`, `suggestGroceries`) against `claude-opus-4-8`
-- [ ] OpenFoodFactsService: product by barcode (v2 API, staging-safe parsing)
-- [ ] ArticleExtractor: fetch URL → title + readable text
-- [ ] Share-intent hook → Read tab
+- [x] Theme (Material 3, light+dark, rounded shapes, google_fonts)
+- [x] Router (5-branch StatefulShellRoute + /settings + /scan)
+- [x] Drift database + DAOs + codegen
+- [x] SettingsService (API key secure, goal/language prefs)
+- [x] AnthropicService: SSE streaming (`summarize`) + structured-output (`suggestMeals`, `suggestGroceries`) against `claude-opus-4-8`
+- [x] OpenFoodFactsService: product by barcode (v2 API, staging-safe parsing)
+- [x] ArticleExtractor: fetch URL → title + readable text
+- [x] Share-intent hook → Read tab
 
 ### Phase 2 — Features
-- [ ] Track page (ring painter, grouped log, quick add sheet, scan-to-log flow, log-from-pantry)
-- [ ] Kitchen page (list, scan-to-add flow, manual add/edit sheet, amount-left slider, delete)
-- [ ] Meals page (suggestion cards, missing→groceries, "I made it" → log)
-- [ ] Groceries page (checklist, manual add, AI proposition, clear done)
-- [ ] Read page (URL field, history list, streaming summary view)
-- [ ] Settings page
+- [x] Track page (ring painter, grouped log, quick add sheet, scan-to-log flow, log-from-pantry)
+- [x] Kitchen page (list, scan-to-add flow, manual add/edit sheet, amount-left slider, delete)
+- [x] Meals page (suggestion cards, missing→groceries, "I made it" → log)
+- [x] Groceries page (checklist, manual add, AI proposition, clear done)
+- [x] Read page (URL field, history list, streaming summary view)
+- [x] Settings page
 
 ### Phase 3 — Quality
-- [ ] Unit tests: OFF response parsing, SSE stream parsing, AI JSON parsing, kcal math, article extraction
-- [ ] Widget test: app boots, 5 tabs navigate
-- [ ] `flutter analyze` clean, `dart format` clean
+- [x] Unit tests: OFF response parsing, SSE stream parsing, AI JSON parsing, article extraction, DB queries
+- [x] Widget test: app boots, 5 tabs navigate
+- [x] `flutter analyze` clean, `dart format` clean
 - [ ] `flutter build apk` passes
-- [ ] Delete dead code (old pages/services), update README
+- [x] Delete dead code (old pages/services), update README
 
 ### Later / ideas (not in this pass)
 - [ ] Decrement pantry quantities automatically when a meal is cooked
