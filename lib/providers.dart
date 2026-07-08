@@ -101,13 +101,6 @@ final selectedDayProvider = NotifierProvider<SelectedDayNotifier, DateTime>(
   SelectedDayNotifier.new,
 );
 
-/*
-final selectedDayProvider = StateProvider<DateTime>((ref) {
-  final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day);
-});
-*/
-
 /// Consumption entries of the selected Track day.
 final selectedDayEntriesProvider = StreamProvider<List<ConsumptionEntry>>((
   ref,
