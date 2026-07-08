@@ -36,6 +36,30 @@ void main() {
     expect(await db.watchPantry().first, isEmpty);
   });
 
+  test('pantry: newest items first, unit/perishable columns default', () async {
+    await db.addPantryItem(
+      PantryItemsCompanion.insert(
+        name: 'Old rice',
+        addedAt: Value(DateTime(2026, 1, 1)),
+      ),
+    );
+    await db.addPantryItem(
+      PantryItemsCompanion.insert(
+        name: 'Fresh eggs',
+        unitCount: const Value(12),
+        perishable: const Value(true),
+        addedAt: Value(DateTime(2026, 7, 1)),
+      ),
+    );
+
+    final pantry = await db.watchPantry().first;
+    expect(pantry.map((i) => i.name), ['Fresh eggs', 'Old rice']);
+    expect(pantry.first.unitCount, 12);
+    expect(pantry.first.perishable, isTrue);
+    expect(pantry.last.unitCount, isNull);
+    expect(pantry.last.perishable, isFalse);
+  });
+
   test('consumption: only entries inside the window are returned', () async {
     final today = DateTime(2026, 7, 8, 12);
     final start = DateTime(2026, 7, 8);

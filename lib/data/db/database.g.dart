@@ -128,6 +128,32 @@ class $PantryItemsTable extends PantryItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _unitCountMeta = const VerificationMeta(
+    'unitCount',
+  );
+  @override
+  late final GeneratedColumn<int> unitCount = GeneratedColumn<int>(
+    'unit_count',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _perishableMeta = const VerificationMeta(
+    'perishable',
+  );
+  @override
+  late final GeneratedColumn<bool> perishable = GeneratedColumn<bool>(
+    'perishable',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("perishable" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _amountLeftMeta = const VerificationMeta(
     'amountLeft',
   );
@@ -177,6 +203,8 @@ class $PantryItemsTable extends PantryItems
     sugarsPer100g,
     fatsPer100g,
     packageQuantity,
+    unitCount,
+    perishable,
     amountLeft,
     addedAt,
     updatedAt,
@@ -276,6 +304,18 @@ class $PantryItemsTable extends PantryItems
         ),
       );
     }
+    if (data.containsKey('unit_count')) {
+      context.handle(
+        _unitCountMeta,
+        unitCount.isAcceptableOrUnknown(data['unit_count']!, _unitCountMeta),
+      );
+    }
+    if (data.containsKey('perishable')) {
+      context.handle(
+        _perishableMeta,
+        perishable.isAcceptableOrUnknown(data['perishable']!, _perishableMeta),
+      );
+    }
     if (data.containsKey('amount_left')) {
       context.handle(
         _amountLeftMeta,
@@ -347,6 +387,14 @@ class $PantryItemsTable extends PantryItems
         DriftSqlType.string,
         data['${effectivePrefix}package_quantity'],
       ),
+      unitCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unit_count'],
+      ),
+      perishable: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}perishable'],
+      )!,
       amountLeft: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}amount_left'],
@@ -383,6 +431,13 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
   /// Human readable package size, e.g. "500 g".
   final String? packageQuantity;
 
+  /// For foods counted in units (eggs, yogurts…): units per full package.
+  /// Null means the item is tracked as a percentage of the package.
+  final int? unitCount;
+
+  /// Perishable foods should be eaten first.
+  final bool perishable;
+
   /// Estimated fraction left in the package, 0.0 to 1.0.
   final double amountLeft;
   final DateTime addedAt;
@@ -399,6 +454,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     this.sugarsPer100g,
     this.fatsPer100g,
     this.packageQuantity,
+    this.unitCount,
+    required this.perishable,
     required this.amountLeft,
     required this.addedAt,
     required this.updatedAt,
@@ -435,6 +492,10 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     if (!nullToAbsent || packageQuantity != null) {
       map['package_quantity'] = Variable<String>(packageQuantity);
     }
+    if (!nullToAbsent || unitCount != null) {
+      map['unit_count'] = Variable<int>(unitCount);
+    }
+    map['perishable'] = Variable<bool>(perishable);
     map['amount_left'] = Variable<double>(amountLeft);
     map['added_at'] = Variable<DateTime>(addedAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -472,6 +533,10 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
       packageQuantity: packageQuantity == null && nullToAbsent
           ? const Value.absent()
           : Value(packageQuantity),
+      unitCount: unitCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitCount),
+      perishable: Value(perishable),
       amountLeft: Value(amountLeft),
       addedAt: Value(addedAt),
       updatedAt: Value(updatedAt),
@@ -495,6 +560,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
       sugarsPer100g: serializer.fromJson<double?>(json['sugarsPer100g']),
       fatsPer100g: serializer.fromJson<double?>(json['fatsPer100g']),
       packageQuantity: serializer.fromJson<String?>(json['packageQuantity']),
+      unitCount: serializer.fromJson<int?>(json['unitCount']),
+      perishable: serializer.fromJson<bool>(json['perishable']),
       amountLeft: serializer.fromJson<double>(json['amountLeft']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -515,6 +582,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
       'sugarsPer100g': serializer.toJson<double?>(sugarsPer100g),
       'fatsPer100g': serializer.toJson<double?>(fatsPer100g),
       'packageQuantity': serializer.toJson<String?>(packageQuantity),
+      'unitCount': serializer.toJson<int?>(unitCount),
+      'perishable': serializer.toJson<bool>(perishable),
       'amountLeft': serializer.toJson<double>(amountLeft),
       'addedAt': serializer.toJson<DateTime>(addedAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -533,6 +602,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     Value<double?> sugarsPer100g = const Value.absent(),
     Value<double?> fatsPer100g = const Value.absent(),
     Value<String?> packageQuantity = const Value.absent(),
+    Value<int?> unitCount = const Value.absent(),
+    bool? perishable,
     double? amountLeft,
     DateTime? addedAt,
     DateTime? updatedAt,
@@ -554,6 +625,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     packageQuantity: packageQuantity.present
         ? packageQuantity.value
         : this.packageQuantity,
+    unitCount: unitCount.present ? unitCount.value : this.unitCount,
+    perishable: perishable ?? this.perishable,
     amountLeft: amountLeft ?? this.amountLeft,
     addedAt: addedAt ?? this.addedAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -583,6 +656,10 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
       packageQuantity: data.packageQuantity.present
           ? data.packageQuantity.value
           : this.packageQuantity,
+      unitCount: data.unitCount.present ? data.unitCount.value : this.unitCount,
+      perishable: data.perishable.present
+          ? data.perishable.value
+          : this.perishable,
       amountLeft: data.amountLeft.present
           ? data.amountLeft.value
           : this.amountLeft,
@@ -605,6 +682,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
           ..write('sugarsPer100g: $sugarsPer100g, ')
           ..write('fatsPer100g: $fatsPer100g, ')
           ..write('packageQuantity: $packageQuantity, ')
+          ..write('unitCount: $unitCount, ')
+          ..write('perishable: $perishable, ')
           ..write('amountLeft: $amountLeft, ')
           ..write('addedAt: $addedAt, ')
           ..write('updatedAt: $updatedAt')
@@ -625,6 +704,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
     sugarsPer100g,
     fatsPer100g,
     packageQuantity,
+    unitCount,
+    perishable,
     amountLeft,
     addedAt,
     updatedAt,
@@ -644,6 +725,8 @@ class PantryItem extends DataClass implements Insertable<PantryItem> {
           other.sugarsPer100g == this.sugarsPer100g &&
           other.fatsPer100g == this.fatsPer100g &&
           other.packageQuantity == this.packageQuantity &&
+          other.unitCount == this.unitCount &&
+          other.perishable == this.perishable &&
           other.amountLeft == this.amountLeft &&
           other.addedAt == this.addedAt &&
           other.updatedAt == this.updatedAt);
@@ -661,6 +744,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
   final Value<double?> sugarsPer100g;
   final Value<double?> fatsPer100g;
   final Value<String?> packageQuantity;
+  final Value<int?> unitCount;
+  final Value<bool> perishable;
   final Value<double> amountLeft;
   final Value<DateTime> addedAt;
   final Value<DateTime> updatedAt;
@@ -676,6 +761,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     this.sugarsPer100g = const Value.absent(),
     this.fatsPer100g = const Value.absent(),
     this.packageQuantity = const Value.absent(),
+    this.unitCount = const Value.absent(),
+    this.perishable = const Value.absent(),
     this.amountLeft = const Value.absent(),
     this.addedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -692,6 +779,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     this.sugarsPer100g = const Value.absent(),
     this.fatsPer100g = const Value.absent(),
     this.packageQuantity = const Value.absent(),
+    this.unitCount = const Value.absent(),
+    this.perishable = const Value.absent(),
     this.amountLeft = const Value.absent(),
     this.addedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -708,6 +797,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     Expression<double>? sugarsPer100g,
     Expression<double>? fatsPer100g,
     Expression<String>? packageQuantity,
+    Expression<int>? unitCount,
+    Expression<bool>? perishable,
     Expression<double>? amountLeft,
     Expression<DateTime>? addedAt,
     Expression<DateTime>? updatedAt,
@@ -724,6 +815,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
       if (sugarsPer100g != null) 'sugars_per100g': sugarsPer100g,
       if (fatsPer100g != null) 'fats_per100g': fatsPer100g,
       if (packageQuantity != null) 'package_quantity': packageQuantity,
+      if (unitCount != null) 'unit_count': unitCount,
+      if (perishable != null) 'perishable': perishable,
       if (amountLeft != null) 'amount_left': amountLeft,
       if (addedAt != null) 'added_at': addedAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -742,6 +835,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     Value<double?>? sugarsPer100g,
     Value<double?>? fatsPer100g,
     Value<String?>? packageQuantity,
+    Value<int?>? unitCount,
+    Value<bool>? perishable,
     Value<double>? amountLeft,
     Value<DateTime>? addedAt,
     Value<DateTime>? updatedAt,
@@ -758,6 +853,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
       sugarsPer100g: sugarsPer100g ?? this.sugarsPer100g,
       fatsPer100g: fatsPer100g ?? this.fatsPer100g,
       packageQuantity: packageQuantity ?? this.packageQuantity,
+      unitCount: unitCount ?? this.unitCount,
+      perishable: perishable ?? this.perishable,
       amountLeft: amountLeft ?? this.amountLeft,
       addedAt: addedAt ?? this.addedAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -800,6 +897,12 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
     if (packageQuantity.present) {
       map['package_quantity'] = Variable<String>(packageQuantity.value);
     }
+    if (unitCount.present) {
+      map['unit_count'] = Variable<int>(unitCount.value);
+    }
+    if (perishable.present) {
+      map['perishable'] = Variable<bool>(perishable.value);
+    }
     if (amountLeft.present) {
       map['amount_left'] = Variable<double>(amountLeft.value);
     }
@@ -826,6 +929,8 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItem> {
           ..write('sugarsPer100g: $sugarsPer100g, ')
           ..write('fatsPer100g: $fatsPer100g, ')
           ..write('packageQuantity: $packageQuantity, ')
+          ..write('unitCount: $unitCount, ')
+          ..write('perishable: $perishable, ')
           ..write('amountLeft: $amountLeft, ')
           ..write('addedAt: $addedAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2039,6 +2144,8 @@ typedef $$PantryItemsTableCreateCompanionBuilder =
       Value<double?> sugarsPer100g,
       Value<double?> fatsPer100g,
       Value<String?> packageQuantity,
+      Value<int?> unitCount,
+      Value<bool> perishable,
       Value<double> amountLeft,
       Value<DateTime> addedAt,
       Value<DateTime> updatedAt,
@@ -2056,6 +2163,8 @@ typedef $$PantryItemsTableUpdateCompanionBuilder =
       Value<double?> sugarsPer100g,
       Value<double?> fatsPer100g,
       Value<String?> packageQuantity,
+      Value<int?> unitCount,
+      Value<bool> perishable,
       Value<double> amountLeft,
       Value<DateTime> addedAt,
       Value<DateTime> updatedAt,
@@ -2122,6 +2231,16 @@ class $$PantryItemsTableFilterComposer
 
   ColumnFilters<String> get packageQuantity => $composableBuilder(
     column: $table.packageQuantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get unitCount => $composableBuilder(
+    column: $table.unitCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get perishable => $composableBuilder(
+    column: $table.perishable,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2205,6 +2324,16 @@ class $$PantryItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get unitCount => $composableBuilder(
+    column: $table.unitCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get perishable => $composableBuilder(
+    column: $table.perishable,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get amountLeft => $composableBuilder(
     column: $table.amountLeft,
     builder: (column) => ColumnOrderings(column),
@@ -2275,6 +2404,14 @@ class $$PantryItemsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get unitCount =>
+      $composableBuilder(column: $table.unitCount, builder: (column) => column);
+
+  GeneratedColumn<bool> get perishable => $composableBuilder(
+    column: $table.perishable,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<double> get amountLeft => $composableBuilder(
     column: $table.amountLeft,
     builder: (column) => column,
@@ -2329,6 +2466,8 @@ class $$PantryItemsTableTableManager
                 Value<double?> sugarsPer100g = const Value.absent(),
                 Value<double?> fatsPer100g = const Value.absent(),
                 Value<String?> packageQuantity = const Value.absent(),
+                Value<int?> unitCount = const Value.absent(),
+                Value<bool> perishable = const Value.absent(),
                 Value<double> amountLeft = const Value.absent(),
                 Value<DateTime> addedAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -2344,6 +2483,8 @@ class $$PantryItemsTableTableManager
                 sugarsPer100g: sugarsPer100g,
                 fatsPer100g: fatsPer100g,
                 packageQuantity: packageQuantity,
+                unitCount: unitCount,
+                perishable: perishable,
                 amountLeft: amountLeft,
                 addedAt: addedAt,
                 updatedAt: updatedAt,
@@ -2361,6 +2502,8 @@ class $$PantryItemsTableTableManager
                 Value<double?> sugarsPer100g = const Value.absent(),
                 Value<double?> fatsPer100g = const Value.absent(),
                 Value<String?> packageQuantity = const Value.absent(),
+                Value<int?> unitCount = const Value.absent(),
+                Value<bool> perishable = const Value.absent(),
                 Value<double> amountLeft = const Value.absent(),
                 Value<DateTime> addedAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -2376,6 +2519,8 @@ class $$PantryItemsTableTableManager
                 sugarsPer100g: sugarsPer100g,
                 fatsPer100g: fatsPer100g,
                 packageQuantity: packageQuantity,
+                unitCount: unitCount,
+                perishable: perishable,
                 amountLeft: amountLeft,
                 addedAt: addedAt,
                 updatedAt: updatedAt,

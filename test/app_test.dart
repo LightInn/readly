@@ -1,9 +1,7 @@
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:readly/app/app.dart';
-import 'package:readly/data/db/database.dart';
 import 'package:readly/data/services/settings_service.dart';
 import 'package:readly/providers.dart';
 
@@ -34,8 +32,20 @@ class _FakeSettingsService extends SettingsService {
 
 void main() {
   testWidgets('app boots and all five tabs navigate', (tester) async {
-    final db = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(db.close);
+    // The database layer has its own tests (test/data/database_test.dart);
+    // here the streams are overridden so no real database is involved.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsServiceProvider.overrideWithValue(_FakeSettingsService()),
+          pantryProvider.overrideWith((ref) => Stream.value(const [])),
+          todayEntriesProvider.overrideWith((ref) => Stream.value(const [])),
+          shoppingProvider.overrideWith((ref) => Stream.value(const [])),
+          articlesProvider.overrideWith((ref) => Stream.value(const [])),
+        ],
+        child: const ReadlyApp(),
+      ),
+    );
 
     // Bounded pumps instead of pumpAndSettle: the app keeps light background
     // activity (font loading, platform channels) that never fully settles in
@@ -45,15 +55,6 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
     }
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          databaseProvider.overrideWithValue(db),
-          settingsServiceProvider.overrideWithValue(_FakeSettingsService()),
-        ],
-        child: const ReadlyApp(),
-      ),
-    );
     await pump();
 
     // Track tab is home.
@@ -75,10 +76,6 @@ void main() {
     await tester.tap(find.byIcon(Icons.auto_stories_outlined));
     await pump();
     expect(find.text('No summaries yet'), findsOneWidget);
-
-    // Flush any lingering timers (stream cleanup, snackbars, etc.) so the
-    // framework's end-of-test invariants pass.
-    await tester.pump(const Duration(minutes: 2));
   });
 
   test('extractUrl pulls the first link out of shared text', () {

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/db/database.dart';
 import '../../data/meal_type.dart';
+import '../../data/quantity.dart';
 import '../../providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/log_portion_sheet.dart';
@@ -73,7 +74,8 @@ class TrackPage extends ConsumerWidget {
         trailing: Text(
           '${subtotal.round()} kcal',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: type.color,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -93,7 +95,11 @@ class TrackPage extends ConsumerWidget {
                 onDismissed: (_) =>
                     ref.read(databaseProvider).deleteConsumption(entry.id),
                 child: ListTile(
-                  leading: Icon(type.icon),
+                  leading: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: type.tint,
+                    child: Icon(type.icon, size: 20, color: type.color),
+                  ),
                   title: Text(entry.name),
                   subtitle: entry.grams == null
                       ? null
@@ -175,7 +181,9 @@ class TrackPage extends ConsumerWidget {
         context,
         foodName: product.name,
         kcalPer100g: product.kcalPer100g,
-        defaultGrams: product.servingGrams ?? 100,
+        packageGrams:
+            parsePackageGrams(product.quantity) ?? product.servingGrams,
+        packageLabel: product.quantity,
       );
       if (result == null) return;
       await ref
@@ -227,23 +235,25 @@ class TrackPage extends ConsumerWidget {
       ),
     );
     if (item == null || !context.mounted) return;
-    final result = await showLogPortionSheet(
-      context,
-      foodName: item.name,
-      kcalPer100g: item.kcalPer100g,
-    );
+    final result = await showEatPantryItemSheet(context, item);
     if (result == null) return;
-    await ref
-        .read(databaseProvider)
-        .logConsumption(
-          ConsumptionEntriesCompanion.insert(
-            name: item.name,
-            kcal: result.kcal,
-            mealType: result.mealType.value,
-            pantryItemId: Value(item.id),
-            grams: Value(result.grams),
-          ),
-        );
+    final db = ref.read(databaseProvider);
+    await db.logConsumption(
+      ConsumptionEntriesCompanion.insert(
+        name: item.name,
+        kcal: result.kcal,
+        mealType: result.mealType.value,
+        pantryItemId: Value(item.id),
+        grams: Value(result.grams),
+      ),
+    );
+    // The slider estimates what was eaten, so keep the pantry stock in sync.
+    await db.updatePantryItem(
+      item.id,
+      PantryItemsCompanion(
+        amountLeft: Value((item.amountLeft - result.fraction).clamp(0.0, 1.0)),
+      ),
+    );
   }
 
   Future<void> _quickAdd(BuildContext context, WidgetRef ref) async {
@@ -289,6 +299,7 @@ class _KcalHeader extends StatelessWidget {
                   progress: goal == 0 ? 0 : consumed / goal,
                   background: scheme.surfaceContainerHighest,
                   foreground: over ? scheme.error : scheme.primary,
+                  foregroundEnd: over ? scheme.error : scheme.tertiary,
                 ),
                 child: Center(
                   child: Column(
@@ -343,11 +354,13 @@ class _RingPainter extends CustomPainter {
     required this.progress,
     required this.background,
     required this.foreground,
+    required this.foregroundEnd,
   });
 
   final double progress;
   final Color background;
   final Color foreground;
+  final Color foregroundEnd;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -362,7 +375,12 @@ class _RingPainter extends CustomPainter {
     final foregroundPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
-      ..color = foreground
+      ..shader = SweepGradient(
+        startAngle: -math.pi / 2,
+        endAngle: 3 * math.pi / 2,
+        transform: const GradientRotation(-math.pi / 2),
+        colors: [foreground, foregroundEnd],
+      ).createShader(arcRect)
       ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(arcRect, 0, 2 * math.pi, false, backgroundPaint);
@@ -379,6 +397,7 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(_RingPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.foreground != foreground ||
+      oldDelegate.foregroundEnd != foregroundEnd ||
       oldDelegate.background != background;
 }
 

@@ -62,7 +62,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          const SectionHeader('AI (Anthropic)'),
+          const SectionHeader('AI (OpenAI)'),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -101,8 +101,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     controller: _apiKeyController,
                     obscureText: _obscureKey,
                     decoration: InputDecoration(
-                      labelText: 'Anthropic API key',
-                      hintText: 'sk-ant-…',
+                      labelText: 'OpenAI API key',
+                      hintText: 'sk-…',
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureKey ? Icons.visibility_off : Icons.visibility,
@@ -119,9 +119,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   TextButton.icon(
                     icon: const Icon(Icons.open_in_new, size: 18),
-                    label: const Text('Get a key at console.anthropic.com'),
+                    label: const Text('Get a key at platform.openai.com'),
                     onPressed: () => launchUrl(
-                      Uri.parse('https://console.anthropic.com/settings/keys'),
+                      Uri.parse('https://platform.openai.com/api-keys'),
                       mode: LaunchMode.externalApplication,
                     ),
                   ),

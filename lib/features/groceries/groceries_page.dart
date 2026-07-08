@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/db/database.dart';
-import '../../data/services/anthropic_service.dart';
+import '../../data/services/ai_service.dart';
 import '../../providers.dart';
 import '../../widgets/common.dart';
 
@@ -35,12 +35,12 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
   }
 
   Future<void> _askAi() async {
-    final anthropic = await ref.read(anthropicServiceProvider.future);
+    final ai = await ref.read(aiServiceProvider.future);
     if (!mounted) return;
-    if (anthropic == null) {
+    if (ai == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Add your Anthropic API key in settings first.'),
+          content: const Text('Add your OpenAI API key in settings first.'),
           action: SnackBarAction(
             label: 'Settings',
             onPressed: () => context.push('/settings'),
@@ -60,7 +60,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
         DateTime.now().subtract(const Duration(days: 14)),
       );
 
-      final suggestions = await anthropic.suggestGroceries(
+      final suggestions = await ai.suggestGroceries(
         pantry: [
           for (final item in pantry)
             {
@@ -91,7 +91,7 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
           context,
         ).showSnackBar(SnackBar(content: Text('Added $added AI suggestions.')));
       }
-    } on AnthropicException catch (e) {
+    } on AiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,

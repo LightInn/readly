@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Clean, rounded Material 3 theme with a fresh green seed.
+/// The vibrant variant keeps the sober look but lets secondary/tertiary
+/// accents actually show some color.
 ThemeData buildTheme(Brightness brightness) {
   final scheme = ColorScheme.fromSeed(
     seedColor: const Color(0xFF3E9B4F),
     brightness: brightness,
+    dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
   );
   final base = ThemeData(colorScheme: scheme, useMaterial3: true);
 

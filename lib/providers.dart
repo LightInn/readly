@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/db/database.dart';
-import 'data/services/anthropic_service.dart';
+import 'data/services/ai_service.dart';
 import 'data/services/article_extractor.dart';
 import 'data/services/off_service.dart';
 import 'data/services/settings_service.dart';
@@ -34,7 +34,7 @@ class SettingsNotifier extends AsyncNotifier<AppSettings> {
 
   Future<void> setApiKey(String? key) async {
     await ref.read(settingsServiceProvider).setApiKey(key);
-    ref.invalidate(anthropicServiceProvider);
+    ref.invalidate(aiServiceProvider);
     state = await AsyncValue.guard(
       () => ref.read(settingsServiceProvider).load(),
     );
@@ -55,13 +55,13 @@ final settingsProvider = AsyncNotifierProvider<SettingsNotifier, AppSettings>(
   SettingsNotifier.new,
 );
 
-/// The Anthropic client, or null while no API key is configured.
-final anthropicServiceProvider = FutureProvider<AnthropicService?>((ref) async {
+/// The OpenAI client, or null while no API key is configured.
+final aiServiceProvider = FutureProvider<AiService?>((ref) async {
   // Re-created whenever settings change (invalidated on key updates).
   ref.watch(settingsProvider);
   final key = await ref.read(settingsServiceProvider).getApiKey();
   if (key == null || key.isEmpty) return null;
-  return AnthropicService(apiKey: key);
+  return AiService(apiKey: key);
 });
 
 // ---- Database streams ----
@@ -93,10 +93,10 @@ class MealSuggestionsNotifier
   AsyncValue<List<MealSuggestion>>? build() => null;
 
   Future<void> generate() async {
-    final anthropic = await ref.read(anthropicServiceProvider.future);
-    if (anthropic == null) {
+    final ai = await ref.read(aiServiceProvider.future);
+    if (ai == null) {
       state = AsyncValue.error(
-        AnthropicException('Add your Anthropic API key in settings first.'),
+        AiException('Add your OpenAI API key in settings first.'),
         StackTrace.current,
       );
       return;
@@ -110,7 +110,7 @@ class MealSuggestionsNotifier
     final remaining = settings.dailyKcalGoal - eaten;
 
     state = await AsyncValue.guard(
-      () => anthropic.suggestMeals(
+      () => ai.suggestMeals(
         pantry: [
           for (final item in pantry)
             {
