@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:padding="16dp"
+    android:background="@drawable/readly_widget_bg">
+
+    <TextView
+        android:id="@+id/widget_kcal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="— kcal left"
+        android:textColor="#FFFFF8F5"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_stats"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="🔥 0 d · −0.00 kg"
+        android:textColor="#FFEBD9CF"
+        android:textSize="13sp" />
+</LinearLayout>

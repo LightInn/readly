@@ -15,6 +15,7 @@ PantryItem _item({
     packageQuantity: packageQuantity,
     unitCount: unitCount,
     perishable: false,
+    category: 'cupboard',
     amountLeft: amountLeft,
     addedAt: DateTime(2026),
     updatedAt: DateTime(2026),

@@ -186,9 +186,9 @@ class AppDatabase extends _$AppDatabase {
       into(consumptionEntries).insert(entry);
 
   Future<void> updateConsumption(int id, ConsumptionEntriesCompanion changes) =>
-      (update(consumptionEntries)..where((t) => t.id.equals(id))).write(
-        changes,
-      );
+      (update(
+        consumptionEntries,
+      )..where((t) => t.id.equals(id))).write(changes);
 
   Future<void> deleteConsumption(int id) =>
       (delete(consumptionEntries)..where((t) => t.id.equals(id))).go();

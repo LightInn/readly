@@ -16,6 +16,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _apiKeyController = TextEditingController();
   final _goalController = TextEditingController();
   final _burnController = TextEditingController();
+  final _thresholdController = TextEditingController();
+  final _currentWeightController = TextEditingController();
+  final _targetWeightController = TextEditingController();
   bool _obscureKey = true;
 
   @override
@@ -25,6 +28,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (settings != null) {
       _goalController.text = settings.dailyKcalGoal.toString();
       _burnController.text = settings.dailyBurnKcal.toString();
+      _thresholdController.text = settings.cheatThresholdKcal.toString();
+      if (settings.currentWeightKg > 0) {
+        _currentWeightController.text = settings.currentWeightKg
+            .toStringAsFixed(1);
+      }
+      if (settings.targetWeightKg > 0) {
+        _targetWeightController.text = settings.targetWeightKg.toStringAsFixed(
+          1,
+        );
+      }
     }
   }
 
@@ -33,6 +46,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _apiKeyController.dispose();
     _goalController.dispose();
     _burnController.dispose();
+    _thresholdController.dispose();
+    _currentWeightController.dispose();
+    _targetWeightController.dispose();
     super.dispose();
   }
 
@@ -59,6 +75,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final burn = int.tryParse(_burnController.text.trim());
     if (burn == null || burn <= 0) return;
     await ref.read(settingsProvider.notifier).setDailyBurnKcal(burn);
+    if (mounted) FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _saveThreshold() async {
+    final threshold = int.tryParse(_thresholdController.text.trim());
+    if (threshold == null || threshold < 0) return;
+    await ref.read(settingsProvider.notifier).setCheatThresholdKcal(threshold);
+    if (mounted) FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _saveWeights() async {
+    final notifier = ref.read(settingsProvider.notifier);
+    final current = double.tryParse(
+      _currentWeightController.text.replaceAll(',', '.'),
+    );
+    final target = double.tryParse(
+      _targetWeightController.text.replaceAll(',', '.'),
+    );
+    if (current != null && current > 0) {
+      await notifier.setCurrentWeightKg(current);
+    }
+    if (target != null && target > 0) {
+      await notifier.setTargetWeightKg(target);
+    }
     if (mounted) FocusScope.of(context).unfocus();
   }
 
@@ -182,6 +222,55 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     onSubmitted: (_) => _saveBurn(),
                     onTapOutside: (_) => _saveBurn(),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _thresholdController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Cheat tolerance (kcal over goal)',
+                      helperText:
+                          'The streak only resets beyond goal + this margin',
+                    ),
+                    onSubmitted: (_) => _saveThreshold(),
+                    onTapOutside: (_) => _saveThreshold(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SectionHeader('Weight goal'),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _currentWeightController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Current weight (kg)',
+                      ),
+                      onSubmitted: (_) => _saveWeights(),
+                      onTapOutside: (_) => _saveWeights(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _targetWeightController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Target weight (kg)',
+                      ),
+                      onSubmitted: (_) => _saveWeights(),
+                      onTapOutside: (_) => _saveWeights(),
+                    ),
                   ),
                 ],
               ),

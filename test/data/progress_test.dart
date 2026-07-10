@@ -77,4 +77,62 @@ void main() {
     expect(stats.streakDays, 1);
     expect(stats.kcalDeficit, 0);
   });
+
+  test('cheat threshold forgives small overshoots', () {
+    final stats = computeProgress(
+      kcalByDay: {
+        day(0): 2050, // 150 over goal — inside the 200 kcal tolerance
+        day(1): 2000, // 100 over — also forgiven, banks nothing (over burn)
+        day(2): 1500,
+      },
+      goalKcal: 1900,
+      burnKcal: 2200,
+      today: today,
+      thresholdKcal: 200,
+    );
+    expect(stats.streakDays, 3);
+    expect(stats.kcalDeficit, 200 + 700);
+
+    // But past the tolerance the streak still resets.
+    final blown = computeProgress(
+      kcalByDay: {day(0): 2150},
+      goalKcal: 1900,
+      burnKcal: 2200,
+      today: today,
+      thresholdKcal: 200,
+    );
+    expect(blown.streakDays, 0);
+  });
+
+  group('computeWeightOutlook', () {
+    test('averages the net balance over finished logged days', () {
+      final outlook = computeWeightOutlook(
+        kcalByDay: {
+          day(0): 500, // today — excluded
+          day(1): 1700, // +500
+          day(2): 2700, // −500 (overate: counts against)
+          day(3): 1200, // +1000
+        },
+        burnKcal: 2200,
+        today: today,
+      );
+      expect(outlook.daysTracked, 3);
+      expect(outlook.netKcalDeficit, 1000);
+      expect(outlook.kgLostTotal, closeTo(1000 / 7700, 1e-9));
+      expect(outlook.avgKgPerDay, closeTo(1000 / 3 / 7700, 1e-9));
+      expect(outlook.daysToLose(1.0), (1.0 / (1000 / 3 / 7700)).ceil());
+    });
+
+    test('no downward trend → no projection', () {
+      final outlook = computeWeightOutlook(
+        kcalByDay: {day(1): 2500},
+        burnKcal: 2200,
+        today: today,
+      );
+      expect(outlook.kgLostTotal, 0);
+      expect(outlook.avgKgPerDay, lessThan(0));
+      expect(outlook.daysToLose(5), isNull);
+      expect(outlook.daysToLose(0), 0);
+    });
+  });
 }

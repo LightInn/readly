@@ -60,6 +60,23 @@ class SettingsNotifier extends AsyncNotifier<AppSettings> {
     await ref.read(settingsServiceProvider).setDailyBurnKcal(burn);
     state = AsyncData(state.requireValue.copyWith(dailyBurnKcal: burn));
   }
+
+  Future<void> setCheatThresholdKcal(int threshold) async {
+    await ref.read(settingsServiceProvider).setCheatThresholdKcal(threshold);
+    state = AsyncData(
+      state.requireValue.copyWith(cheatThresholdKcal: threshold),
+    );
+  }
+
+  Future<void> setCurrentWeightKg(double kg) async {
+    await ref.read(settingsServiceProvider).setCurrentWeightKg(kg);
+    state = AsyncData(state.requireValue.copyWith(currentWeightKg: kg));
+  }
+
+  Future<void> setTargetWeightKg(double kg) async {
+    await ref.read(settingsServiceProvider).setTargetWeightKg(kg);
+    state = AsyncData(state.requireValue.copyWith(targetWeightKg: kg));
+  }
 }
 
 final settingsProvider = AsyncNotifierProvider<SettingsNotifier, AppSettings>(
@@ -95,6 +112,13 @@ class SelectedDayNotifier extends Notifier<DateTime> {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
   }
+
+  void select(DateTime day) => state = DateTime(day.year, day.month, day.day);
+
+  void today() {
+    final now = DateTime.now();
+    state = DateTime(now.year, now.month, now.day);
+  }
 }
 
 final selectedDayProvider = NotifierProvider<SelectedDayNotifier, DateTime>(
@@ -111,11 +135,16 @@ final selectedDayEntriesProvider = StreamProvider<List<ConsumptionEntry>>((
       .watchEntriesBetween(day, day.add(const Duration(days: 1)));
 });
 
-/// Streak ("days without cheat") and cumulative kcal deficit → kg lost.
-final progressStatsProvider = StreamProvider<ProgressStats>((ref) {
+/// Streak ("days without cheat"), cumulative kcal deficit → kg lost, and the
+/// all-time weight trajectory, recomputed whenever any entry changes.
+final progressStatsProvider = StreamProvider<(ProgressStats, WeightOutlook)>((
+  ref,
+) {
   final settings = ref.watch(settingsProvider).value;
   final goal = settings?.dailyKcalGoal ?? SettingsService.defaultKcalGoal;
   final burn = settings?.dailyBurnKcal ?? SettingsService.defaultKcalBurn;
+  final threshold =
+      settings?.cheatThresholdKcal ?? SettingsService.defaultCheatThreshold;
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   return ref
@@ -134,11 +163,15 @@ final progressStatsProvider = StreamProvider<ProgressStats>((ref) {
           );
           byDay[day] = (byDay[day] ?? 0) + entry.kcal;
         }
-        return computeProgress(
-          kcalByDay: byDay,
-          goalKcal: goal,
-          burnKcal: burn,
-          today: now,
+        return (
+          computeProgress(
+            kcalByDay: byDay,
+            goalKcal: goal,
+            burnKcal: burn,
+            today: now,
+            thresholdKcal: threshold,
+          ),
+          computeWeightOutlook(kcalByDay: byDay, burnKcal: burn, today: now),
         );
       });
 });
@@ -170,24 +203,28 @@ class MealSuggestionsNotifier extends Notifier<AsyncValue<void>?> {
   @override
   AsyncValue<void>? build() => null;
 
-  Future<void> generate() async {
-    final ai = await ref.read(aiServiceProvider.future);
-    if (ai == null) {
-      state = AsyncValue.error(
-        AiException('Add your OpenAI API key in settings first.'),
-        StackTrace.current,
-      );
-      return;
-    }
+  /// [focus] biases the ideas toward one ingredient (e.g. a perishable that
+  /// must be eaten soon).
+  Future<void> generate({String? focus}) async {
     state = const AsyncValue.loading();
-
-    final settings = await ref.read(settingsProvider.future);
-    final pantry = await ref.read(databaseProvider).watchPantry().first;
-    final entries = await ref.read(todayEntriesProvider.future);
-    final eaten = entries.fold<double>(0, (sum, e) => sum + e.kcal);
-    final remaining = settings.dailyKcalGoal - eaten;
-
+    // Everything lives inside the guard: an exception anywhere would
+    // otherwise leave the state stuck on loading forever.
     state = await AsyncValue.guard(() async {
+      final ai = await ref.read(aiServiceProvider.future);
+      if (ai == null) {
+        throw AiException('Add your OpenAI API key in settings first.');
+      }
+      final settings = await ref.read(settingsProvider.future);
+      final db = ref.read(databaseProvider);
+      final pantry = await db.watchPantry().first;
+      final now = DateTime.now();
+      final dayStart = DateTime(now.year, now.month, now.day);
+      final entries = await db
+          .watchEntriesBetween(dayStart, dayStart.add(const Duration(days: 1)))
+          .first;
+      final eaten = entries.fold<double>(0, (sum, e) => sum + e.kcal);
+      final remaining = settings.dailyKcalGoal - eaten;
+
       final meals = await ai.suggestMeals(
         pantry: [
           for (final item in pantry)
@@ -218,8 +255,9 @@ class MealSuggestionsNotifier extends Notifier<AsyncValue<void>?> {
         dailyGoalKcal: settings.dailyKcalGoal.toDouble(),
         remainingKcal: remaining.clamp(300, 4000).toDouble(),
         language: settings.language,
+        focusIngredient: focus,
       );
-      await ref.read(databaseProvider).replaceSavedMeals([
+      await db.replaceSavedMeals([
         for (final meal in meals)
           SavedMealsCompanion.insert(
             title: meal.title,

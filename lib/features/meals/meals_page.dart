@@ -123,11 +123,11 @@ class _MealsBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cooked = ref.watch(cookedMealsProvider).value ?? [];
-    if (meals.isEmpty && cooked.isEmpty) return _Idle(hasApiKey: hasApiKey);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
+        const _EatFirstCard(),
         if (meals.isEmpty)
           _Idle(hasApiKey: hasApiKey)
         else ...[
@@ -158,7 +158,9 @@ class _MealsBody extends ConsumerWidget {
                       child: Icon(
                         Icons.restaurant_menu,
                         size: 20,
-                        color: Theme.of(context).colorScheme.onTertiaryContainer,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onTertiaryContainer,
                       ),
                     ),
                     title: Text(meal.title),
@@ -232,6 +234,67 @@ class _MealsBody extends ConsumerWidget {
         SnackBar(content: Text('Logged ${meal.kcal.round()} kcal. Enjoy!')),
       );
     }
+  }
+}
+
+/// Perishable, unfinished pantry items. Tapping one asks the AI for meal
+/// ideas built around that specific ingredient.
+class _EatFirstCard extends ConsumerWidget {
+  const _EatFirstCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pantry = ref.watch(pantryProvider).value ?? [];
+    final perishables = [
+      for (final item in pantry)
+        if (item.perishable && !item.isConsumed) item,
+    ];
+    if (perishables.isEmpty) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        color: scheme.secondaryContainer,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.eco, size: 18, color: Color(0xFFE8930C)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Eat these first — tap one for meal ideas around it',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: scheme.onSecondaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final item in perishables.take(6))
+                    ActionChip(
+                      avatar: const Icon(Icons.auto_awesome, size: 16),
+                      label: Text('${item.name} · ${item.amountLabel}'),
+                      onPressed: () => ref
+                          .read(mealSuggestionsProvider.notifier)
+                          .generate(focus: item.name),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

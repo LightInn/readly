@@ -120,7 +120,11 @@ class _GroceriesPageState extends ConsumerState<GroceriesPage> {
         '~${item.estimatedPrice!.toStringAsFixed(2)} €',
     ];
     if (parts.isEmpty) return null;
-    return Text(parts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis);
+    return Text(
+      parts.join(' · '),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
   }
 
   Future<void> _deleteWithUndo(ShoppingItem item) async {

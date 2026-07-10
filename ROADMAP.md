@@ -93,14 +93,10 @@ Accept: no visual regressions; analyze clean.
 
 ### Phase 2 — Insight & history (week 2)
 
-#### R-10 · Day navigation on Track — M · P1
-Replace the fixed "today" with a selected-day state (provider holding a `DateTime`).
-Chevrons + horizontal swipe on the header navigate days; "Today" pill jumps back. Entries
-stream & kcal ring follow the selected day (`watchEntriesBetween` already takes a range).
-Files: `providers.dart` (selectedDayProvider), `track_page.dart`.
-Accept: swipe left = yesterday with its own entries/ring; logging while viewing a past day
-logs to that day (portion sheet gains a date awareness) or is blocked with a hint — pick
-logging-to-that-day.
+#### R-10 · Day navigation on Track — M · P1 ✅ (done 2026-07, chevrons; swipe still open)
+Chevrons around the day label navigate history; tapping the label jumps back to today;
+logging while viewing a past day backdates to that day (midday). Left open: horizontal
+swipe gesture on the header.
 
 #### R-11 · Weekly kcal chart — M · P1
 A 7-day bar chart card on Track (below the log) — hand-drawn `CustomPaint` bars (no chart
@@ -140,7 +136,9 @@ Kitchen app-bar action "Add low stock to groceries": every non-finished item ≤
 count + Undo. Files: `kitchen_page.dart`, `database.dart` (bulk insert helper).
 Accept: duplicates skipped case-insensitively; undo removes the batch.
 
-#### R-22 · Meal favorites & cook history — M · P2
+#### R-22 · Meal favorites & cook history — M · P2 — history ✅ (done 2026-07)
+The `CookedMeals` table + "Cooked before" section with one-tap re-log shipped. Remaining
+scope below: favorites pinning and "suggest variations" seeding the AI prompt.
 "I made it" also archives the meal (new table `CookedMeals` or a `favorite`/`cookedAt`
 approach on SavedMeals — prefer a separate table so regenerations don't erase history).
 New section on Meals page: "Cook again" horizontal cards (title, kcal, one-tap log with
@@ -154,10 +152,8 @@ After picking the meal type, reuse the portion slider (fraction of the recipe, d
 `showLogPortionSheet` with `packageGrams: null`, kcal scaled by fraction).
 Accept: 50% → half kcal logged; kitchen-update sheet still offered.
 
-#### R-24 · Time-of-day aware suggestions — S · P1
-Pass `MealType.suggestedNow()` and the local time to `suggestMeals`; system prompt asks
-for meals fitting that moment (breakfast ideas in the morning…). Files: `ai_service.dart`,
-`providers.dart`. Accept: prompt contains the moment; no schema change.
+#### R-24 · Time-of-day aware suggestions — S · P1 ✅ (done 2026-07)
+The meal prompt now carries the local hour and asks for moment-appropriate meals.
 
 #### R-25 · Offline OFF cache — M · P2
 Cache OFF product JSON by barcode (new drift table `OffCache` with `fetchedAt`, TTL 30 d).
@@ -194,10 +190,10 @@ Settings: System / Light / Dark segmented control persisted in prefs; `ReadlyApp
 themeModeProvider. Files: `settings_service.dart`, `providers.dart`, `app/app.dart`,
 `settings_page.dart`. Accept: choice survives restart.
 
-#### R-34 · CI artifact & release hygiene — S · P3
-GitHub Actions uploads the debug APK as a workflow artifact; README section documents the
-`android/key.properties` release-signing setup. Files: `.github/workflows/*`, `README.md`.
-Accept: artifact downloadable from a CI run.
+#### R-34 · CI artifact & release hygiene — S · P3 — artifact ✅ (done 2026-07)
+CI now runs on pushes to master + PRs and uploads the debug APK as the
+`readly-debug-apk` artifact (30-day retention). Remaining: README section documenting the
+`android/key.properties` release-signing setup.
 
 #### R-35 · Read tab quality-of-life — S · P3
 History search field, "share summary" action on the summary page, retry button when the
@@ -209,6 +205,61 @@ cases (no network, 401 bad key, quota) to plain-English strings with a fix hint.
 Files: all pages + `ai_service.dart`, `off_service.dart`. Accept: no `$e` shown raw.
 
 ---
+
+### Shipped outside the original phases (v3.3, 2026-07 — user feedback batch)
+
+- Track: animated kcal ring; overflow drawn as a darker second lap + "punishment" UI
+  (error-tinted header, streak reset); day navigation (R-10); streak card
+  ("N days without cheat!") + cumulative deficit → estimated kg lost (7700 kcal = 1 kg,
+  maintenance configurable in settings, default 2200); tap-to-edit logged entries
+  (name/kcal/meal period); restaurant quick-add presets (poké, curry, bento…).
+- Kitchen: list organized into collapsible drawers (Fridge/Freezer/Cupboard/Snacks/
+  Drinks/Other), drawer picker in the edit sheet, perishable auto-files into Fridge.
+- Meals: "Cooked before" history with one-tap re-log; ingredients (incl. missing) listed
+  inside the steps accordion.
+- Groceries: AI suggestions now carry a suggested quantity + rough price (€); estimated
+  cart total shown for unchecked items.
+- AI: meal & grocery prompts rewritten in French (the gastronomy vector space) and
+  carrying the owner's profile (weight, deficit target, sugar addiction, no-prep
+  preference, evening cravings, restaurant lunches).
+- CI: runs on master pushes too, uploads the debug APK artifact.
+
+### Shipped v3.4 (2026-07-10 — second feedback batch)
+
+- Fix: meal generation could hang on "Cooking up ideas" forever — every await now lives
+  inside `AsyncValue.guard` and the OpenAI call has an explicit 120 s timeout with a
+  readable error.
+- Streak tolerance: the streak only resets past goal + a configurable margin (default
+  200 kcal, "Cheat tolerance" in settings); within the margin the Track header shows an
+  amber "still inside your tolerance — stop here!" instead of the punishment UI.
+- "Eat these first" moved Track → Meals; tapping an ingredient generates 3 ideas built
+  around it (`generate(focus: …)` biases the French prompt).
+- Weight goal: current + target weight in settings; Track shows a progress bar with the
+  all-time estimated loss, the honest daily average (over-eating counts against it) and
+  "≈ N days to goal at this pace".
+- Android home-screen widget (see R-40 below).
+
+### New task cards
+
+#### R-40 · Android home-screen widget — L · P1 ✅ (done 2026-07)
+Shipped with `home_widget` 0.8: `ReadlyWidgetProvider` (Kotlin) + sepia layout showing
+"kcal left" and "🔥 streak · −kg", tap opens the app. Data pushed as strings from
+`lib/data/services/widget_sync.dart`, triggered by a `_WidgetSyncListener` in
+`app.dart` listening to today's entries + progress stats. Left open: iOS glance,
+periodic refresh past midnight without opening the app (WorkManager).
+
+#### R-41 · Restaurant meal AI estimator — M · P2
+Quick-add presets shipped; next level: free-text "I ate a salmon poké and a coke" → AI
+returns name + kcal estimate (+ meal type) via a small json_schema request. One tap to
+accept. Files: `ai_service.dart` (new `estimateMeal`), `track_page.dart` (field in
+quick-add). Accept: works offline-degraded (falls back to manual kcal).
+
+#### R-42 · Evening craving guard — S · P2
+After 19:00, if the day is still under goal, show a gentle banner on Track: kcal left +
+one suggested low-kcal snack from the kitchen (e.g. yogurt) + "your streak is N days —
+don't feed it to a chocolate bar". Dismissible per-day. Files: `track_page.dart`,
+`providers.dart`. Accept: shows only evenings, only when under goal, dismiss persists
+for the day.
 
 ## Later / ideas parking lot
 

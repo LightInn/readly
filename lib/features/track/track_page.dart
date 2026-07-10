@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/db/database.dart';
 import '../../data/meal_type.dart';
-import '../../data/progress.dart';
 import '../../data/quantity.dart';
 import '../../providers.dart';
 import '../../widgets/common.dart';
@@ -34,8 +33,18 @@ String _dayLabel(DateTime day) {
   if (diff == 1) return 'Yesterday';
   const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return '${weekdays[day.weekday - 1]} ${day.day} ${months[day.month - 1]}';
 }
@@ -56,7 +65,9 @@ class TrackPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final day = ref.watch(selectedDayProvider);
     final entries = ref.watch(selectedDayEntriesProvider).value ?? [];
-    final goal = ref.watch(settingsProvider).value?.dailyKcalGoal ?? 2200;
+    final settings = ref.watch(settingsProvider).value;
+    final goal = settings?.dailyKcalGoal ?? 2200;
+    final threshold = settings?.cheatThresholdKcal ?? 200;
     final consumed = entries.fold<double>(0, (sum, e) => sum + e.kcal);
     final isToday = _isToday(day);
 
@@ -79,10 +90,10 @@ class TrackPage extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
         children: [
           _DayNavigator(day: day, isToday: isToday),
-          _KcalHeader(consumed: consumed, goal: goal),
+          _KcalHeader(consumed: consumed, goal: goal, threshold: threshold),
           const SizedBox(height: 12),
           const _ProgressCard(),
-          const _EatSoonCard(),
+          const _WeightGoalCard(),
           if (entries.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 48),
@@ -384,17 +395,13 @@ class _DayNavigator extends ConsumerWidget {
               icon: const Icon(Icons.chevron_left),
               onPressed: () => ref
                   .read(selectedDayProvider.notifier)
-                  .state = day.subtract(const Duration(days: 1)),
+                  .select(day.subtract(const Duration(days: 1))),
             ),
             Expanded(
               child: GestureDetector(
                 onTap: isToday
                     ? null
-                    : () {
-                        final now = DateTime.now();
-                        ref.read(selectedDayProvider.notifier).state =
-                            DateTime(now.year, now.month, now.day);
-                      },
+                    : () => ref.read(selectedDayProvider.notifier).today(),
                 child: Text(
                   _dayLabel(day),
                   textAlign: TextAlign.center,
@@ -411,7 +418,7 @@ class _DayNavigator extends ConsumerWidget {
                   ? null
                   : () => ref
                         .read(selectedDayProvider.notifier)
-                        .state = day.add(const Duration(days: 1)),
+                        .select(day.add(const Duration(days: 1))),
             ),
           ],
         ),
@@ -422,9 +429,9 @@ class _DayNavigator extends ConsumerWidget {
               'Viewing a past day — new logs are saved to this date. '
               'Tap the date to jump back to today.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ),
       ],
@@ -439,8 +446,9 @@ class _ProgressCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(progressStatsProvider).value;
-    if (stats == null) return const SizedBox.shrink();
+    final data = ref.watch(progressStatsProvider).value;
+    if (data == null) return const SizedBox.shrink();
+    final (stats, _) = data;
     final scheme = Theme.of(context).colorScheme;
     final kg = stats.kgLost;
 
@@ -455,7 +463,8 @@ class _ProgressCard extends ConsumerWidget {
                 color: stats.streakDays > 0
                     ? const Color(0xFFE8930C)
                     : scheme.onSurfaceVariant,
-                value: '${stats.streakDays} day${stats.streakDays == 1 ? '' : 's'}',
+                value:
+                    '${stats.streakDays} day${stats.streakDays == 1 ? '' : 's'}',
                 label: stats.streakDays > 0
                     ? 'without cheat!'
                     : 'fresh start — stay under goal',
@@ -524,54 +533,87 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-/// Perishable items that are not finished yet — eat these first.
-/// Hidden when there is nothing perishable in the kitchen.
-class _EatSoonCard extends ConsumerWidget {
-  const _EatSoonCard();
+/// Progress toward the target weight: bar + estimated days remaining at the
+/// average daily pace. Hidden until both weights are set in settings.
+class _WeightGoalCard extends ConsumerWidget {
+  const _WeightGoalCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pantry = ref.watch(pantryProvider).value ?? [];
-    final perishables = [
-      for (final item in pantry)
-        if (item.perishable && !item.isConsumed) item,
-    ];
-    if (perishables.isEmpty) return const SizedBox.shrink();
+    final settings = ref.watch(settingsProvider).value;
+    final data = ref.watch(progressStatsProvider).value;
+    if (settings == null || data == null) return const SizedBox.shrink();
+    final current = settings.currentWeightKg;
+    final target = settings.targetWeightKg;
+    if (current <= 0 || target <= 0 || target >= current) {
+      return const SizedBox.shrink();
+    }
+    final (_, outlook) = data;
 
     final scheme = Theme.of(context).colorScheme;
+    final lost = outlook.kgLostTotal;
+    final toGo = current - target;
+    // The journey started at (current + what was already lost since
+    // tracking began); the bar fills as the estimate grows.
+    final progress = lost / (lost + toGo);
+    final daysLeft = outlook.daysToLose(toGo);
+    final gramsPerDay = (outlook.avgKgPerDay * 1000).round();
+
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Card(
-        color: scheme.secondaryContainer,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.eco, size: 18, color: Color(0xFFE8930C)),
+                  Icon(Icons.flag_outlined, size: 20, color: scheme.tertiary),
                   const SizedBox(width: 8),
                   Text(
-                    'Eat these first',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: scheme.onSecondaryContainer,
+                    '${current.toStringAsFixed(1)} kg → '
+                    '${target.toStringAsFixed(1)} kg',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    gramsPerDay > 0
+                        ? '−$gramsPerDay g/day avg'
+                        : 'no trend yet',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: gramsPerDay > 0
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress.clamp(0.0, 1.0),
+                  minHeight: 8,
+                  color: scheme.tertiary,
+                  backgroundColor: scheme.surfaceContainerHighest,
+                ),
+              ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final item in perishables.take(6))
-                    ActionChip(
-                      avatar: const Icon(Icons.restaurant, size: 16),
-                      label: Text('${item.name} · ${item.amountLabel}'),
-                      onPressed: () => eatPantryItemFlow(context, ref, item),
-                    ),
-                ],
+              Text(
+                daysLeft == null
+                    ? 'Log a few under-goal days to project a finish date.'
+                    : daysLeft == 0
+                    ? 'Goal reached — update your weights in settings! 🎉'
+                    : '≈ $daysLeft days to goal at this pace '
+                          '(−${lost.toStringAsFixed(2)} kg est. so far, '
+                          '${outlook.daysTracked} days tracked)',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -582,20 +624,29 @@ class _EatSoonCard extends ConsumerWidget {
 }
 
 class _KcalHeader extends StatelessWidget {
-  const _KcalHeader({required this.consumed, required this.goal});
+  const _KcalHeader({
+    required this.consumed,
+    required this.goal,
+    required this.threshold,
+  });
 
   final double consumed;
   final int goal;
+
+  /// Kcal of tolerance above the goal before the streak breaks.
+  final int threshold;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final remaining = goal - consumed;
     final over = remaining < 0;
+    // Slightly over is forgiven; the punishment UI fires past the tolerance.
+    final cheated = consumed > goal + threshold;
     final progress = goal == 0 ? 0.0 : consumed / goal;
 
     return Card(
-      color: over ? scheme.errorContainer : null,
+      color: cheated ? scheme.errorContainer : null,
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Row(
@@ -610,11 +661,11 @@ class _KcalHeader extends StatelessWidget {
                 builder: (context, animated, child) => CustomPaint(
                   painter: _RingPainter(
                     progress: animated,
-                    background: over
+                    background: cheated
                         ? scheme.onErrorContainer.withValues(alpha: 0.15)
                         : scheme.surfaceContainerHighest,
-                    foreground: over ? scheme.error : scheme.primary,
-                    foregroundEnd: over ? scheme.error : scheme.tertiary,
+                    foreground: cheated ? scheme.error : scheme.primary,
+                    foregroundEnd: cheated ? scheme.error : scheme.tertiary,
                     overflowColor: scheme.error,
                   ),
                   child: child,
@@ -628,13 +679,13 @@ class _KcalHeader extends StatelessWidget {
                         style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(
                               fontWeight: FontWeight.w800,
-                              color: over ? scheme.onErrorContainer : null,
+                              color: cheated ? scheme.onErrorContainer : null,
                             ),
                       ),
                       Text(
                         'kcal',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: over ? scheme.onErrorContainer : null,
+                          color: cheated ? scheme.onErrorContainer : null,
                         ),
                       ),
                     ],
@@ -649,21 +700,29 @@ class _KcalHeader extends StatelessWidget {
                 children: [
                   Text(
                     over
-                        ? '${remaining.abs().round()} kcal over 😬'
+                        ? '${remaining.abs().round()} kcal over'
+                              '${cheated ? ' 😬' : ''}'
                         : '${remaining.round()} kcal left',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: over ? scheme.error : null,
+                      color: cheated
+                          ? scheme.error
+                          : over
+                          ? const Color(0xFFE8930C)
+                          : null,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    over
+                    cheated
                         ? 'Goal blown — the streak resets. Log everything '
                               'anyway: honest data beats a pretty ring.'
+                        : over
+                        ? 'Still inside your $threshold kcal tolerance — '
+                              'the streak survives. Stop here!'
                         : 'Goal: $goal kcal',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: over
+                      color: cheated
                           ? scheme.onErrorContainer
                           : scheme.onSurfaceVariant,
                     ),
@@ -783,9 +842,9 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
           const SizedBox(height: 12),
           Text(
             'Restaurant lunch? Tap to prefill a rough estimate:',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           SizedBox(

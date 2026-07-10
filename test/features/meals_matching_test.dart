@@ -7,6 +7,7 @@ PantryItem _item(String name, {double amountLeft = 1.0}) {
     id: name.hashCode,
     name: name,
     perishable: false,
+    category: 'cupboard',
     amountLeft: amountLeft,
     addedAt: DateTime(2026),
     updatedAt: DateTime(2026),

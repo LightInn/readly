@@ -84,7 +84,7 @@ class GrocerySuggestion {
 class AiService {
   AiService({required String apiKey}) {
     OpenAI.apiKey = apiKey;
-    OpenAI.requestsTimeOut = const Duration(minutes: 5);
+    OpenAI.requestsTimeOut = const Duration(minutes: 2);
   }
 
   /// Cheap, fast router model — plenty for summaries and meal ideas.
@@ -162,6 +162,7 @@ class AiService {
     required double dailyGoalKcal,
     required double remainingKcal,
     required String language,
+    String? focusIngredient,
   }) async {
     final result = await _structuredRequest(
       system:
@@ -187,7 +188,10 @@ class AiService {
           '3 repas sains et sans effort, adaptés à ce moment de la journée, '
           'que je peux faire maintenant. Ne mets un ingrédient dans '
           'missing_ingredients que si je dois vraiment l\'acheter (je possède '
-          'eau, sel, poivre et huile de base).',
+          'eau, sel, poivre et huile de base).'
+          '${focusIngredient == null ? '' : '\n\nIMPORTANT : je veux surtout '
+                    'utiliser "$focusIngredient" (il doit être consommé rapidement) '
+                    '— les 3 repas doivent le mettre en valeur.'}',
       schemaName: 'meal_suggestions',
       schema: {
         'type': 'object',
@@ -297,16 +301,28 @@ class AiService {
   }) async {
     final OpenAIChatCompletionModel response;
     try {
-      response = await OpenAI.instance.chat.create(
-        model: model,
-        messages: [
-          _message(OpenAIChatMessageRole.system, system),
-          _message(OpenAIChatMessageRole.user, userContent),
-        ],
-        responseFormat: {
-          'type': 'json_schema',
-          'json_schema': {'name': schemaName, 'strict': true, 'schema': schema},
-        },
+      response = await OpenAI.instance.chat
+          .create(
+            model: model,
+            messages: [
+              _message(OpenAIChatMessageRole.system, system),
+              _message(OpenAIChatMessageRole.user, userContent),
+            ],
+            responseFormat: {
+              'type': 'json_schema',
+              'json_schema': {
+                'name': schemaName,
+                'strict': true,
+                'schema': schema,
+              },
+            },
+          )
+          // Belt and braces on top of OpenAI.requestsTimeOut — the UI must
+          // never wait forever.
+          .timeout(const Duration(seconds: 120));
+    } on TimeoutException {
+      throw AiException(
+        'The model took too long to answer — please try again.',
       );
     } catch (e) {
       throw _wrap(e);

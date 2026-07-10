@@ -7,6 +7,9 @@ class AppSettings {
     required this.language,
     required this.dailyKcalGoal,
     required this.dailyBurnKcal,
+    this.cheatThresholdKcal = SettingsService.defaultCheatThreshold,
+    this.currentWeightKg = 0,
+    this.targetWeightKg = 0,
   });
 
   final bool hasApiKey;
@@ -18,17 +21,30 @@ class AppSettings {
   /// (7700 kcal ≈ 1 kg of fat).
   final int dailyBurnKcal;
 
+  /// Tolerance above the goal before the streak resets.
+  final int cheatThresholdKcal;
+
+  /// Weight tracking for the goal progress bar. 0 = unset.
+  final double currentWeightKg;
+  final double targetWeightKg;
+
   AppSettings copyWith({
     bool? hasApiKey,
     String? language,
     int? dailyKcalGoal,
     int? dailyBurnKcal,
+    int? cheatThresholdKcal,
+    double? currentWeightKg,
+    double? targetWeightKg,
   }) {
     return AppSettings(
       hasApiKey: hasApiKey ?? this.hasApiKey,
       language: language ?? this.language,
       dailyKcalGoal: dailyKcalGoal ?? this.dailyKcalGoal,
       dailyBurnKcal: dailyBurnKcal ?? this.dailyBurnKcal,
+      cheatThresholdKcal: cheatThresholdKcal ?? this.cheatThresholdKcal,
+      currentWeightKg: currentWeightKg ?? this.currentWeightKg,
+      targetWeightKg: targetWeightKg ?? this.targetWeightKg,
     );
   }
 }
@@ -44,8 +60,12 @@ class SettingsService {
   static const _languageKey = 'language';
   static const _kcalGoalKey = 'dailyKcalGoal';
   static const _kcalBurnKey = 'dailyBurnKcal';
+  static const _cheatThresholdKey = 'cheatThresholdKcal';
+  static const _currentWeightKey = 'currentWeightKg';
+  static const _targetWeightKey = 'targetWeightKg';
   static const defaultKcalGoal = 2200;
   static const defaultKcalBurn = 2200;
+  static const defaultCheatThreshold = 200;
   static const defaultLanguage = 'english';
 
   final FlutterSecureStorage _secure;
@@ -70,11 +90,17 @@ class SettingsService {
     final language = await _prefs.getString(_languageKey);
     final goal = await _prefs.getInt(_kcalGoalKey);
     final burn = await _prefs.getInt(_kcalBurnKey);
+    final threshold = await _prefs.getInt(_cheatThresholdKey);
+    final currentWeight = await _prefs.getDouble(_currentWeightKey);
+    final targetWeight = await _prefs.getDouble(_targetWeightKey);
     return AppSettings(
       hasApiKey: apiKey != null && apiKey.isNotEmpty,
       language: language ?? defaultLanguage,
       dailyKcalGoal: goal ?? defaultKcalGoal,
       dailyBurnKcal: burn ?? defaultKcalBurn,
+      cheatThresholdKcal: threshold ?? defaultCheatThreshold,
+      currentWeightKg: currentWeight ?? 0,
+      targetWeightKg: targetWeight ?? 0,
     );
   }
 
@@ -84,4 +110,13 @@ class SettingsService {
   Future<void> setDailyKcalGoal(int goal) => _prefs.setInt(_kcalGoalKey, goal);
 
   Future<void> setDailyBurnKcal(int burn) => _prefs.setInt(_kcalBurnKey, burn);
+
+  Future<void> setCheatThresholdKcal(int threshold) =>
+      _prefs.setInt(_cheatThresholdKey, threshold);
+
+  Future<void> setCurrentWeightKg(double kg) =>
+      _prefs.setDouble(_currentWeightKey, kg);
+
+  Future<void> setTargetWeightKg(double kg) =>
+      _prefs.setDouble(_targetWeightKey, kg);
 }

@@ -15,9 +15,6 @@ enum KitchenCategory {
   final String label;
   final IconData icon;
 
-  static KitchenCategory fromValue(String? value) =>
-      KitchenCategory.values.firstWhere(
-        (c) => c.value == value,
-        orElse: () => KitchenCategory.other,
-      );
+  static KitchenCategory fromValue(String? value) => KitchenCategory.values
+      .firstWhere((c) => c.value == value, orElse: () => KitchenCategory.other);
 }
