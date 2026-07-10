@@ -36,47 +36,38 @@ class SettingsNotifier extends AsyncNotifier<AppSettings> {
   @override
   Future<AppSettings> build() => ref.read(settingsServiceProvider).load();
 
-  Future<void> setApiKey(String? key) async {
-    await ref.read(settingsServiceProvider).setApiKey(key);
-    // No explicit invalidate: aiServiceProvider watches this provider, so
-    // publishing the new state below rebuilds it (invalidating from inside
-    // the watched notifier trips riverpod's circular-dependency check).
+  /// Persists via [write], then republishes the state straight from disk.
+  /// Never touches `state.requireValue`: a setter called while the initial
+  /// load is still pending would throw and silently drop the write chain.
+  /// (No explicit invalidate either: aiServiceProvider watches this provider,
+  /// and invalidating from inside a watched notifier trips riverpod's
+  /// circular-dependency check.)
+  Future<void> _write(Future<void> Function(SettingsService) write) async {
+    await write(ref.read(settingsServiceProvider));
     state = await AsyncValue.guard(
       () => ref.read(settingsServiceProvider).load(),
     );
   }
 
-  Future<void> setLanguage(String language) async {
-    await ref.read(settingsServiceProvider).setLanguage(language);
-    state = AsyncData(state.requireValue.copyWith(language: language));
-  }
+  Future<void> setApiKey(String? key) => _write((s) => s.setApiKey(key));
 
-  Future<void> setDailyKcalGoal(int goal) async {
-    await ref.read(settingsServiceProvider).setDailyKcalGoal(goal);
-    state = AsyncData(state.requireValue.copyWith(dailyKcalGoal: goal));
-  }
+  Future<void> setLanguage(String language) =>
+      _write((s) => s.setLanguage(language));
 
-  Future<void> setDailyBurnKcal(int burn) async {
-    await ref.read(settingsServiceProvider).setDailyBurnKcal(burn);
-    state = AsyncData(state.requireValue.copyWith(dailyBurnKcal: burn));
-  }
+  Future<void> setDailyKcalGoal(int goal) =>
+      _write((s) => s.setDailyKcalGoal(goal));
 
-  Future<void> setCheatThresholdKcal(int threshold) async {
-    await ref.read(settingsServiceProvider).setCheatThresholdKcal(threshold);
-    state = AsyncData(
-      state.requireValue.copyWith(cheatThresholdKcal: threshold),
-    );
-  }
+  Future<void> setDailyBurnKcal(int burn) =>
+      _write((s) => s.setDailyBurnKcal(burn));
 
-  Future<void> setCurrentWeightKg(double kg) async {
-    await ref.read(settingsServiceProvider).setCurrentWeightKg(kg);
-    state = AsyncData(state.requireValue.copyWith(currentWeightKg: kg));
-  }
+  Future<void> setCheatThresholdKcal(int threshold) =>
+      _write((s) => s.setCheatThresholdKcal(threshold));
 
-  Future<void> setTargetWeightKg(double kg) async {
-    await ref.read(settingsServiceProvider).setTargetWeightKg(kg);
-    state = AsyncData(state.requireValue.copyWith(targetWeightKg: kg));
-  }
+  Future<void> setCurrentWeightKg(double kg) =>
+      _write((s) => s.setCurrentWeightKg(kg));
+
+  Future<void> setTargetWeightKg(double kg) =>
+      _write((s) => s.setTargetWeightKg(kg));
 }
 
 final settingsProvider = AsyncNotifierProvider<SettingsNotifier, AppSettings>(

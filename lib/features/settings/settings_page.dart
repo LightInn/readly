@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../data/services/settings_service.dart';
 import '../../providers.dart';
 import '../../widgets/common.dart';
 
@@ -20,29 +23,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _currentWeightController = TextEditingController();
   final _targetWeightController = TextEditingController();
   bool _obscureKey = true;
+  bool _fieldsPopulated = false;
+  Timer? _saveDebounce;
 
   @override
   void initState() {
     super.initState();
     final settings = ref.read(settingsProvider).value;
-    if (settings != null) {
-      _goalController.text = settings.dailyKcalGoal.toString();
-      _burnController.text = settings.dailyBurnKcal.toString();
-      _thresholdController.text = settings.cheatThresholdKcal.toString();
-      if (settings.currentWeightKg > 0) {
-        _currentWeightController.text = settings.currentWeightKg
-            .toStringAsFixed(1);
-      }
-      if (settings.targetWeightKg > 0) {
-        _targetWeightController.text = settings.targetWeightKg.toStringAsFixed(
-          1,
-        );
-      }
+    if (settings != null) _populateFields(settings);
+  }
+
+  /// The settings load asynchronously; the page may open before they exist.
+  void _populateFields(AppSettings settings) {
+    _fieldsPopulated = true;
+    _goalController.text = settings.dailyKcalGoal.toString();
+    _burnController.text = settings.dailyBurnKcal.toString();
+    _thresholdController.text = settings.cheatThresholdKcal.toString();
+    if (settings.currentWeightKg > 0) {
+      _currentWeightController.text = settings.currentWeightKg.toStringAsFixed(
+        1,
+      );
     }
+    if (settings.targetWeightKg > 0) {
+      _targetWeightController.text = settings.targetWeightKg.toStringAsFixed(1);
+    }
+  }
+
+  /// Persist shortly after the user stops typing — waiting for a submit or a
+  /// tap-outside loses the value when the page is simply popped.
+  void _scheduleSave(Future<void> Function() save) {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 600), () {
+      unawaited(save());
+    });
   }
 
   @override
   void dispose() {
+    _saveDebounce?.cancel();
     _apiKeyController.dispose();
     _goalController.dispose();
     _burnController.dispose();
@@ -68,21 +86,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final goal = int.tryParse(_goalController.text.trim());
     if (goal == null || goal <= 0) return;
     await ref.read(settingsProvider.notifier).setDailyKcalGoal(goal);
-    if (mounted) FocusScope.of(context).unfocus();
   }
 
   Future<void> _saveBurn() async {
     final burn = int.tryParse(_burnController.text.trim());
     if (burn == null || burn <= 0) return;
     await ref.read(settingsProvider.notifier).setDailyBurnKcal(burn);
-    if (mounted) FocusScope.of(context).unfocus();
   }
 
   Future<void> _saveThreshold() async {
     final threshold = int.tryParse(_thresholdController.text.trim());
     if (threshold == null || threshold < 0) return;
     await ref.read(settingsProvider.notifier).setCheatThresholdKcal(threshold);
-    if (mounted) FocusScope.of(context).unfocus();
   }
 
   Future<void> _saveWeights() async {
@@ -99,11 +114,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (target != null && target > 0) {
       await notifier.setTargetWeightKg(target);
     }
-    if (mounted) FocusScope.of(context).unfocus();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Fill the fields once the settings arrive, if the page opened first.
+    ref.listen(settingsProvider, (_, next) {
+      final value = next.value;
+      if (value != null && !_fieldsPopulated) _populateFields(value);
+    });
     final settings = ref.watch(settingsProvider).value;
     final scheme = Theme.of(context).colorScheme;
 
@@ -207,6 +226,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     decoration: const InputDecoration(
                       labelText: 'Daily kcal goal',
                     ),
+                    onChanged: (_) => _scheduleSave(_saveGoal),
                     onSubmitted: (_) => _saveGoal(),
                     onTapOutside: (_) => _saveGoal(),
                   ),
@@ -220,6 +240,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           'Used for the streak deficit → kg lost estimate '
                           '(7700 kcal ≈ 1 kg)',
                     ),
+                    onChanged: (_) => _scheduleSave(_saveBurn),
                     onSubmitted: (_) => _saveBurn(),
                     onTapOutside: (_) => _saveBurn(),
                   ),
@@ -232,6 +253,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       helperText:
                           'The streak only resets beyond goal + this margin',
                     ),
+                    onChanged: (_) => _scheduleSave(_saveThreshold),
                     onSubmitted: (_) => _saveThreshold(),
                     onTapOutside: (_) => _saveThreshold(),
                   ),
@@ -254,6 +276,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       decoration: const InputDecoration(
                         labelText: 'Current weight (kg)',
                       ),
+                      onChanged: (_) => _scheduleSave(_saveWeights),
                       onSubmitted: (_) => _saveWeights(),
                       onTapOutside: (_) => _saveWeights(),
                     ),
@@ -268,6 +291,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       decoration: const InputDecoration(
                         labelText: 'Target weight (kg)',
                       ),
+                      onChanged: (_) => _scheduleSave(_saveWeights),
                       onSubmitted: (_) => _saveWeights(),
                       onTapOutside: (_) => _saveWeights(),
                     ),
