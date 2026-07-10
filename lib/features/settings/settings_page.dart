@@ -22,6 +22,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _thresholdController = TextEditingController();
   final _currentWeightController = TextEditingController();
   final _targetWeightController = TextEditingController();
+  final _heightController = TextEditingController();
+  final _ageController = TextEditingController();
   bool _obscureKey = true;
   bool _fieldsPopulated = false;
   Timer? _saveDebounce;
@@ -47,6 +49,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (settings.targetWeightKg > 0) {
       _targetWeightController.text = settings.targetWeightKg.toStringAsFixed(1);
     }
+    if (settings.heightCm > 0) {
+      _heightController.text = settings.heightCm.round().toString();
+    }
+    if (settings.age > 0) {
+      _ageController.text = settings.age.toString();
+    }
   }
 
   /// Persist shortly after the user stops typing — waiting for a submit or a
@@ -67,6 +75,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _thresholdController.dispose();
     _currentWeightController.dispose();
     _targetWeightController.dispose();
+    _heightController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -114,6 +124,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (target != null && target > 0) {
       await notifier.setTargetWeightKg(target);
     }
+  }
+
+  Future<void> _saveProfile() async {
+    final notifier = ref.read(settingsProvider.notifier);
+    final height = double.tryParse(_heightController.text.replaceAll(',', '.'));
+    final age = int.tryParse(_ageController.text.trim());
+    if (height != null && height > 0) await notifier.setHeightCm(height);
+    if (age != null && age > 0) await notifier.setAge(age);
   }
 
   @override
@@ -231,19 +249,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     onTapOutside: (_) => _saveGoal(),
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: _burnController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Maintenance kcal (daily burn estimate)',
-                      helperText:
-                          'Used for the streak deficit → kg lost estimate '
-                          '(7700 kcal ≈ 1 kg)',
+                  if (settings?.hasBodyProfile ?? false)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(
+                        Icons.local_fire_department,
+                        color: Color(0xFFE8930C),
+                      ),
+                      title: Text(
+                        'Maintenance today: ≈ '
+                        '${ref.watch(progressStatsProvider).value?.dailyBurnKcal ?? '…'}'
+                        ' kcal',
+                      ),
+                      subtitle: const Text(
+                        'Auto-computed from your weight, height and age '
+                        '(Mifflin-St Jeor), and lowered as the streak burns '
+                        'kcal off your estimated weight.',
+                      ),
+                    )
+                  else
+                    TextField(
+                      controller: _burnController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Maintenance kcal (daily burn estimate)',
+                        helperText:
+                            'Fill weight, height and age below to compute '
+                            'this automatically',
+                      ),
+                      onChanged: (_) => _scheduleSave(_saveBurn),
+                      onSubmitted: (_) => _saveBurn(),
+                      onTapOutside: (_) => _saveBurn(),
                     ),
-                    onChanged: (_) => _scheduleSave(_saveBurn),
-                    onSubmitted: (_) => _saveBurn(),
-                    onTapOutside: (_) => _saveBurn(),
-                  ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _thresholdController,
@@ -261,40 +298,73 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
           ),
-          const SectionHeader('Weight goal'),
+          const SectionHeader('Body & weight goal'),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _currentWeightController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _currentWeightController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Current weight (kg)',
+                          ),
+                          onChanged: (_) => _scheduleSave(_saveWeights),
+                          onSubmitted: (_) => _saveWeights(),
+                          onTapOutside: (_) => _saveWeights(),
+                        ),
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Current weight (kg)',
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _targetWeightController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Target weight (kg)',
+                          ),
+                          onChanged: (_) => _scheduleSave(_saveWeights),
+                          onSubmitted: (_) => _saveWeights(),
+                          onTapOutside: (_) => _saveWeights(),
+                        ),
                       ),
-                      onChanged: (_) => _scheduleSave(_saveWeights),
-                      onSubmitted: (_) => _saveWeights(),
-                      onTapOutside: (_) => _saveWeights(),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _targetWeightController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _heightController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Height (cm)',
+                          ),
+                          onChanged: (_) => _scheduleSave(_saveProfile),
+                          onSubmitted: (_) => _saveProfile(),
+                          onTapOutside: (_) => _saveProfile(),
+                        ),
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Target weight (kg)',
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _ageController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Age'),
+                          onChanged: (_) => _scheduleSave(_saveProfile),
+                          onSubmitted: (_) => _saveProfile(),
+                          onTapOutside: (_) => _saveProfile(),
+                        ),
                       ),
-                      onChanged: (_) => _scheduleSave(_saveWeights),
-                      onSubmitted: (_) => _saveWeights(),
-                      onTapOutside: (_) => _saveWeights(),
-                    ),
+                    ],
                   ),
                 ],
               ),

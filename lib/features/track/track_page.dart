@@ -448,7 +448,7 @@ class _ProgressCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(progressStatsProvider).value;
     if (data == null) return const SizedBox.shrink();
-    final (stats, _) = data;
+    final stats = data.stats;
     final scheme = Theme.of(context).colorScheme;
     final kg = stats.kgLost;
 
@@ -548,7 +548,7 @@ class _WeightGoalCard extends ConsumerWidget {
     if (current <= 0 || target <= 0 || target >= current) {
       return const SizedBox.shrink();
     }
-    final (_, outlook) = data;
+    final outlook = data.outlook;
 
     final scheme = Theme.of(context).colorScheme;
     final lost = outlook.kgLostTotal;
@@ -571,14 +571,20 @@ class _WeightGoalCard extends ConsumerWidget {
                 children: [
                   Icon(Icons.flag_outlined, size: 20, color: scheme.tertiary),
                   const SizedBox(width: 8),
-                  Text(
-                    '${current.toStringAsFixed(1)} kg → '
-                    '${target.toStringAsFixed(1)} kg',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
+                  Expanded(
+                    child: Text(
+                      daysLeft == null
+                          ? '${target.toStringAsFixed(1)} kg — no date yet'
+                          : daysLeft == 0
+                          ? '${target.toStringAsFixed(1)} kg — reached! 🎉'
+                          : '${target.toStringAsFixed(1)} kg on '
+                                '${_futureDateLabel(daysLeft)}',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: daysLeft == null ? null : scheme.tertiary,
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   Text(
                     gramsPerDay > 0
                         ? '−$gramsPerDay g/day avg'
@@ -606,11 +612,10 @@ class _WeightGoalCard extends ConsumerWidget {
               Text(
                 daysLeft == null
                     ? 'Log a few under-goal days to project a finish date.'
-                    : daysLeft == 0
-                    ? 'Goal reached — update your weights in settings! 🎉'
-                    : '≈ $daysLeft days to goal at this pace '
-                          '(−${lost.toStringAsFixed(2)} kg est. so far, '
-                          '${outlook.daysTracked} days tracked)',
+                    : 'Now ≈ ${(current - lost).toStringAsFixed(1)} kg '
+                          '(started ${current.toStringAsFixed(1)}) · '
+                          '$daysLeft days left · burn target today: '
+                          '${data.dailyBurnKcal} kcal',
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
@@ -620,6 +625,26 @@ class _WeightGoalCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// "15 Mar 2027" — the estimated calendar day [daysFromNow] ahead.
+  static String _futureDateLabel(int daysFromNow) {
+    final date = DateTime.now().add(Duration(days: daysFromNow));
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }
 

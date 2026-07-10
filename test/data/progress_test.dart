@@ -104,6 +104,20 @@ void main() {
     expect(blown.streakDays, 0);
   });
 
+  group('estimateDailyBurn', () {
+    test('matches the calibration point: 25 y / 120 kg / 179 cm = 2830', () {
+      expect(estimateDailyBurn(weightKg: 120, heightCm: 179, age: 25), 2830);
+    });
+
+    test('drops as the estimated weight drops (adaptive target)', () {
+      final at120 = estimateDailyBurn(weightKg: 120, heightCm: 179, age: 25);
+      final at118 = estimateDailyBurn(weightKg: 118, heightCm: 179, age: 25);
+      expect(at118, lessThan(at120));
+      // 10 kcal of BMR per kg × 1.287 activity ≈ 13 kcal/kg.
+      expect(at120 - at118, closeTo(2 * 10 * 1.287, 1));
+    });
+  });
+
   group('computeWeightOutlook', () {
     test('averages the net balance over finished logged days', () {
       final outlook = computeWeightOutlook(

@@ -10,6 +10,8 @@ class AppSettings {
     this.cheatThresholdKcal = SettingsService.defaultCheatThreshold,
     this.currentWeightKg = 0,
     this.targetWeightKg = 0,
+    this.heightCm = SettingsService.defaultHeightCm,
+    this.age = SettingsService.defaultAge,
   });
 
   final bool hasApiKey;
@@ -28,6 +30,14 @@ class AppSettings {
   final double currentWeightKg;
   final double targetWeightKg;
 
+  /// Body profile for the automatic maintenance-kcal estimate.
+  final double heightCm;
+  final int age;
+
+  /// Whether the maintenance kcal can be computed from the profile instead
+  /// of the manual [dailyBurnKcal].
+  bool get hasBodyProfile => currentWeightKg > 0 && heightCm > 0 && age > 0;
+
   AppSettings copyWith({
     bool? hasApiKey,
     String? language,
@@ -36,6 +46,8 @@ class AppSettings {
     int? cheatThresholdKcal,
     double? currentWeightKg,
     double? targetWeightKg,
+    double? heightCm,
+    int? age,
   }) {
     return AppSettings(
       hasApiKey: hasApiKey ?? this.hasApiKey,
@@ -45,6 +57,8 @@ class AppSettings {
       cheatThresholdKcal: cheatThresholdKcal ?? this.cheatThresholdKcal,
       currentWeightKg: currentWeightKg ?? this.currentWeightKg,
       targetWeightKg: targetWeightKg ?? this.targetWeightKg,
+      heightCm: heightCm ?? this.heightCm,
+      age: age ?? this.age,
     );
   }
 }
@@ -63,9 +77,13 @@ class SettingsService {
   static const _cheatThresholdKey = 'cheatThresholdKcal';
   static const _currentWeightKey = 'currentWeightKg';
   static const _targetWeightKey = 'targetWeightKg';
+  static const _heightKey = 'heightCm';
+  static const _ageKey = 'age';
   static const defaultKcalGoal = 2200;
   static const defaultKcalBurn = 2200;
   static const defaultCheatThreshold = 200;
+  static const defaultHeightCm = 179.0;
+  static const defaultAge = 25;
   static const defaultLanguage = 'english';
 
   final FlutterSecureStorage _secure;
@@ -93,6 +111,8 @@ class SettingsService {
     final threshold = await _prefs.getInt(_cheatThresholdKey);
     final currentWeight = await _prefs.getDouble(_currentWeightKey);
     final targetWeight = await _prefs.getDouble(_targetWeightKey);
+    final height = await _prefs.getDouble(_heightKey);
+    final age = await _prefs.getInt(_ageKey);
     return AppSettings(
       hasApiKey: apiKey != null && apiKey.isNotEmpty,
       language: language ?? defaultLanguage,
@@ -101,6 +121,8 @@ class SettingsService {
       cheatThresholdKcal: threshold ?? defaultCheatThreshold,
       currentWeightKg: currentWeight ?? 0,
       targetWeightKg: targetWeight ?? 0,
+      heightCm: height ?? defaultHeightCm,
+      age: age ?? defaultAge,
     );
   }
 
@@ -119,4 +141,8 @@ class SettingsService {
 
   Future<void> setTargetWeightKg(double kg) =>
       _prefs.setDouble(_targetWeightKey, kg);
+
+  Future<void> setHeightCm(double cm) => _prefs.setDouble(_heightKey, cm);
+
+  Future<void> setAge(int age) => _prefs.setInt(_ageKey, age);
 }

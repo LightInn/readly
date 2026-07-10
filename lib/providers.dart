@@ -68,6 +68,10 @@ class SettingsNotifier extends AsyncNotifier<AppSettings> {
 
   Future<void> setTargetWeightKg(double kg) =>
       _write((s) => s.setTargetWeightKg(kg));
+
+  Future<void> setHeightCm(double cm) => _write((s) => s.setHeightCm(cm));
+
+  Future<void> setAge(int age) => _write((s) => s.setAge(age));
 }
 
 final settingsProvider = AsyncNotifierProvider<SettingsNotifier, AppSettings>(
@@ -126,16 +130,16 @@ final selectedDayEntriesProvider = StreamProvider<List<ConsumptionEntry>>((
       .watchEntriesBetween(day, day.add(const Duration(days: 1)));
 });
 
-/// Streak ("days without cheat"), cumulative kcal deficit → kg lost, and the
-/// all-time weight trajectory, recomputed whenever any entry changes.
-final progressStatsProvider = StreamProvider<(ProgressStats, WeightOutlook)>((
-  ref,
-) {
+/// Streak ("days without cheat"), cumulative kcal deficit → kg lost, the
+/// all-time weight trajectory and today's (adaptive) maintenance target,
+/// recomputed whenever any entry changes.
+final progressStatsProvider = StreamProvider<ProgressSnapshot>((ref) {
   final settings = ref.watch(settingsProvider).value;
   final goal = settings?.dailyKcalGoal ?? SettingsService.defaultKcalGoal;
-  final burn = settings?.dailyBurnKcal ?? SettingsService.defaultKcalBurn;
+  final manualBurn = settings?.dailyBurnKcal ?? SettingsService.defaultKcalBurn;
   final threshold =
       settings?.cheatThresholdKcal ?? SettingsService.defaultCheatThreshold;
+  final hasProfile = settings?.hasBodyProfile ?? false;
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   return ref
@@ -154,15 +158,44 @@ final progressStatsProvider = StreamProvider<(ProgressStats, WeightOutlook)>((
           );
           byDay[day] = (byDay[day] ?? 0) + entry.kcal;
         }
-        return (
-          computeProgress(
+
+        int burnAt(double weightKg) => hasProfile
+            ? estimateDailyBurn(
+                weightKg: weightKg,
+                heightCm: settings!.heightCm,
+                age: settings.age,
+              )
+            : manualBurn;
+
+        // Two passes: the streak deficit lowers the estimated weight, which
+        // in turn lowers today's maintenance target (one iteration is enough,
+        // the correction is a handful of kcal).
+        var burn = burnAt(settings?.currentWeightKg ?? 0);
+        if (hasProfile) {
+          final firstPass = computeProgress(
+            kcalByDay: byDay,
+            goalKcal: goal,
+            burnKcal: burn,
+            today: now,
+            thresholdKcal: threshold,
+          );
+          burn = burnAt(settings!.currentWeightKg - firstPass.kgLost);
+        }
+
+        return ProgressSnapshot(
+          stats: computeProgress(
             kcalByDay: byDay,
             goalKcal: goal,
             burnKcal: burn,
             today: now,
             thresholdKcal: threshold,
           ),
-          computeWeightOutlook(kcalByDay: byDay, burnKcal: burn, today: now),
+          outlook: computeWeightOutlook(
+            kcalByDay: byDay,
+            burnKcal: burn,
+            today: now,
+          ),
+          dailyBurnKcal: burn,
         );
       });
 });

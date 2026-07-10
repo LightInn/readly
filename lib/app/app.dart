@@ -97,12 +97,11 @@ class _WidgetSyncListener extends ConsumerWidget {
     final data = ref.read(progressStatsProvider).value;
     if (settings == null || entries == null || data == null) return;
     final consumed = entries.fold<double>(0, (sum, e) => sum + e.kcal);
-    final (stats, _) = data;
     unawaited(
       WidgetSync.push(
         kcalLeft: (settings.dailyKcalGoal - consumed).round(),
-        streakDays: stats.streakDays,
-        kgLost: stats.kgLost,
+        streakDays: data.stats.streakDays,
+        kgLost: data.stats.kgLost,
       ),
     );
   }

@@ -6,6 +6,36 @@
 /// 7700 kcal of cumulative deficit ≈ 1 kg of fat lost.
 library;
 
+/// Estimated daily energy expenditure (maintenance / TDEE) for the owner:
+/// Mifflin-St Jeor BMR (male) × 1.287 activity factor (desk job + light
+/// cycling), calibrated so the reference point 25 y / 120 kg / 179 cm lands
+/// exactly on 2830 kcal/day.
+int estimateDailyBurn({
+  required double weightKg,
+  required double heightCm,
+  required int age,
+}) {
+  final bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+  return (bmr * 1.287).round();
+}
+
+/// Everything the Track page (and the widget) needs, computed in one pass.
+class ProgressSnapshot {
+  const ProgressSnapshot({
+    required this.stats,
+    required this.outlook,
+    required this.dailyBurnKcal,
+  });
+
+  final ProgressStats stats;
+  final WeightOutlook outlook;
+
+  /// Today's maintenance target. When the profile (weight/height/age) is
+  /// set, this adapts daily: the kcal already burned during the streak lower
+  /// the estimated weight, which lowers the target.
+  final int dailyBurnKcal;
+}
+
 class ProgressStats {
   const ProgressStats({required this.streakDays, required this.kcalDeficit});
 
