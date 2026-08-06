@@ -34,7 +34,7 @@ dependencies:
   html: ^0.15.6
 
   # Storage & misc
-  flutter_secure_storage: ^10.3.1
+  flutter_secure_storage: ^11.0.0
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
   google_fonts: ^8.1.0
