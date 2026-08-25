@@ -24,7 +24,7 @@ dependencies:
   http: ^1.6.0
 
   # AI (OpenAI models via dart_openai)
-  dart_openai: ^6.1.1
+  dart_openai: ^8.0.0
 
   # Android home-screen widget
   home_widget: ^0.9.0
